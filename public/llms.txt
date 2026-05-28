@@ -1,0 +1,23 @@
+# Westinghouse Pet Taiwan — LLM Context
+
+Westinghouse Pet Taiwan is the official e-commerce website for Westinghouse Pet products in Taiwan. We sell premium pet care products including smart feeders, automatic litter boxes, pet water fountains, dryers, and health monitors.
+
+## Products
+- M81 鲜湿粮智慧喂食器 (M81 Smart Wet/Dry Food Feeder) — Automatic scheduling, portion control
+- A80 智能猫砂盆 (A80 Automatic Litter Box) — Self-cleaning, odor control
+- D61 智能饮水机 (D61 Smart Water Fountain) — UV sterilization, circulation
+- M12 陶瓷饮水机 (M12 Ceramic Water Fountain) — Whisper quiet, BPA-free
+- X71 宠物烘干箱 (X71 Pet Dryer Box) — 71L large capacity, smart temperature control
+
+## Support
+- Warranty registration: /support/warranty-register
+- Warranty lookup: /support/warranty-check
+- Repair tickets: /support/create-ticket
+- Repair status: /support/repair-status
+- Customer service hotline: 0800-000-000
+
+## Policies
+- Free shipping on orders over NT$2,000
+- 1-year warranty on all products
+- 7-day return policy for unopened items
+- LINE support coming soon
