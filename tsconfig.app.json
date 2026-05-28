@@ -17,5 +17,5 @@
 
     "strict": false
   },
-  "include": ["src"]
+  "include": ["."]
 }
