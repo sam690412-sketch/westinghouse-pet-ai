@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router";
+import { Link, useParams } from "react-router-dom";
 import { PageLayout } from "@/components/PageLayout";
 import { FAQ_TOPICS } from "@/data/faq";
 import { Button } from "@/components/ui/button";
