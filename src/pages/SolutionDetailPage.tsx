@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router";
+import { Link, useParams } from "react-router-dom";
 import { PageLayout } from "@/components/PageLayout";
 import { SOLUTIONS } from "@/data/solutions";
 import { PRODUCTS } from "@/data/products";
