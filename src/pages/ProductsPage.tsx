@@ -1,5 +1,5 @@
 import { PageLayout } from "@/components/PageLayout";
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { PRODUCTS, FEEDERS, WATER_DISPENSERS } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
