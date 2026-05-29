@@ -1,4 +1,4 @@
-import { Link } from "react-router";
+import { Link } from "react-router-dom";
 import { PageLayout } from "@/components/PageLayout";
 import { WATER_DISPENSERS } from "@/data/products";
 import { Button } from "@/components/ui/button";
