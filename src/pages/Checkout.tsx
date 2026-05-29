@@ -1,6 +1,6 @@
 import { env } from "@/lib/env";
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate } from "react-router-dom";
 import { ShoppingCart, ArrowRight, AlertTriangle, Truck, CreditCard, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/hooks/useCart";
