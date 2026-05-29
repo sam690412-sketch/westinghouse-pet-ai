@@ -1,6 +1,6 @@
 import { env } from "@/lib/env";
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router";
+import { useSearchParams } from "react-router-dom";
 import {
   Search,
   Loader2,
