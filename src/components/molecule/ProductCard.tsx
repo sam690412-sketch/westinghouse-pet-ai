@@ -59,16 +59,18 @@ export const ProductCard = forwardRef<HTMLDivElement, ProductCardProps>(
       >
         {/* Image Container */}
         <div
-          className={cn(
-            "relative flex items-center justify-center overflow-hidden bg-white",
-            isHorizontal ? "w-40 md:w-48 shrink-0" : "h-[420px] w-full"
+         className={cn(
+           "relative flex items-center justify-center overflow-hidden bg-white",
+           isHorizontal
+             ? "w-40 md:w-48 shrink-0"
+             : "h-[520px] md:h-[560px] w-full"
           )}
         >
           {imageUrl ? (
             <img
               src={imageUrl}
               alt={name}
-              className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
+              className="max-h-full max-w-full object-contain p-6 transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
             />
           ) : (
