@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import {
   ProductHeroSection,
   ProductFeaturesSection,
@@ -9,6 +9,17 @@ import {
   WhyChooseUsSection,
 } from "@/sections";
 import { useProduct } from "@/hooks/useCMS";
+
+/* ================================================================ */
+/*  PRODUCT DETAIL IMAGE MAP — slug → infographic path               */
+/* ================================================================ */
+const DETAIL_IMAGE_MAP: Record<string, string> = {
+  "m81-fresh-food-feeder": "/images/products/detail/m81-detail.webp",
+  "m12-panoramic-feeder": "/images/products/detail/m12-detail.webp",
+  "m31-gashapon-feeder": "/images/products/detail/m31-detail.webp",
+  "d11ba-water-dispenser": "/images/products/detail/d11-ba-detail.webp",
+  "d61-stainless-dispenser": "/images/products/detail/d61-detail.webp",
+};
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -62,6 +73,27 @@ export default function ProductDetail() {
       {product.faq_items && product.faq_items.length > 0 && (
         <ProductFAQSection faqItems={product.faq_items} />
       )}
+
+      {/* ====== 產品詳細介紹 ====== */}
+      {(() => {
+        const detailImg = DETAIL_IMAGE_MAP[product.slug];
+        if (!detailImg) return null;
+        return (
+          <section className="w-full py-12">
+            <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+              <h2 className="mb-8 text-center text-2xl font-bold tracking-tight">
+                產品詳細介紹
+              </h2>
+              <img
+                src={detailImg}
+                alt={`${product.name} 詳細介紹`}
+                className="w-full object-contain"
+                loading="lazy"
+              />
+            </div>
+          </section>
+        );
+      })()}
 
       <BundleRecommendationSection currentSlug={product.slug} />
       <WhyChooseUsSection />
