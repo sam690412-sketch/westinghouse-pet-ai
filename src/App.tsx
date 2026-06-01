@@ -17,6 +17,7 @@ import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
 import NotFound from "./pages/NotFound";
 import PlaceholderPage from "./pages/PlaceholderPage";
+import ReviewsPage from "./pages/ReviewsPage";
 
 /* ================================================================ */
 /*  PHASE 4.8 — Real Content Pages                                  */
@@ -81,7 +82,7 @@ function AppInner() {
           <Route path="/trust/:slug" element={<Safe name="Trust"><TrustPage /></Safe>} />
 
           {/* ===== REVIEWS ===== */}
-          <Route path="/reviews" element={<Safe name="Reviews"><PlaceholderPage /></Safe>} />
+          <Route path="/reviews" element={<Safe name="Reviews"><ReviewsPage /></Safe>} />
 
           {/* ===== FAQ ===== */}
           <Route path="/faq" element={<Safe name="FAQ"><FAQPage /></Safe>} />
