@@ -25,6 +25,15 @@ export interface ProductCardProps extends React.HTMLAttributes<HTMLDivElement> {
   layout?: "vertical" | "horizontal";
 }
 
+/* Card image priority: use /images/products/card/ if available */
+const CARD_IMAGE_MAP: Record<string, string> = {
+  "m81-fresh-food-feeder": "/images/products/card/m81-card.webp",
+  "m12-panoramic-feeder": "/images/products/card/m12-card.webp",
+  "m31-gashapon-feeder": "/images/products/card/m31-card.webp",
+  "d11ba-water-dispenser": "/images/products/card/d11-ba-card.webp",
+  "d61-stainless-dispenser": "/images/products/card/d61-card.webp",
+};
+
 export const ProductCard = forwardRef<HTMLDivElement, ProductCardProps>(
   ({
     slug,
@@ -46,6 +55,7 @@ export const ProductCard = forwardRef<HTMLDivElement, ProductCardProps>(
     ...props
   }, ref) => {
     const isHorizontal = layout === "horizontal";
+    const cardImage = CARD_IMAGE_MAP[slug] || imageUrl;
 
     return (
       <div
@@ -61,17 +71,16 @@ export const ProductCard = forwardRef<HTMLDivElement, ProductCardProps>(
         {/* Image Container */}
         <div
           className={cn(
-            "relative flex items-center justify-center bg-white",
-            isHorizontal ? "w-40 md:w-48 shrink-0 overflow-hidden" : "h-[480px] md:h-[520px] w-full overflow-hidden"
+            "relative flex items-center justify-center overflow-hidden bg-white",
+            isHorizontal ? "w-40 md:w-48 shrink-0" : "aspect-square min-h-[360px] w-full"
           )}
         >
-          {imageUrl ? (
+          {cardImage ? (
             <img
-              src={imageUrl}
+              src={cardImage}
               alt={name}
-              className="h-auto w-auto max-h-[92%] max-w-[92%] object-contain transition-transform duration-500 group-hover:scale-105"
+              className="max-h-[82%] max-w-[82%] object-contain p-6 transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
-              style={{ imageRendering: "auto" }}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">
