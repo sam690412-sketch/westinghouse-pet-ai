@@ -205,10 +205,11 @@ function ReviewCard({
   stagger: ReturnType<typeof useStaggerAnimation>;
 }) {
   return (
-    <div
+    <a
+      href="/#/reviews"
       className={cn(
-        "mb-4 break-inside-avoid rounded-2xl border border-border bg-card p-5 shadow-sm",
-        "transition-all duration-300 hover:shadow-md hover:border-primary/20"
+        "mb-4 block break-inside-avoid rounded-2xl border border-border bg-card p-5 shadow-sm",
+        "transition-all duration-300 hover:shadow-md hover:border-primary/20 cursor-pointer"
       )}
       style={stagger.getDelayStyle(index)}
     >
@@ -287,6 +288,6 @@ function ReviewCard({
           </span>
         )}
       </div>
-    </div>
+    </a>
   );
 }
