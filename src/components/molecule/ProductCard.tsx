@@ -51,27 +51,27 @@ export const ProductCard = forwardRef<HTMLDivElement, ProductCardProps>(
       <div
         ref={ref}
         className={cn(
-          "group relative overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-all duration-300 hover:shadow-card-hover",
-          isHorizontal && "flex flex-row",
+          "group relative rounded-2xl border border-border bg-card shadow-card transition-all duration-300 hover:shadow-card-hover",
+          isHorizontal && "flex flex-row overflow-hidden",
+          !isHorizontal && "flex flex-col overflow-hidden",
           className
         )}
         {...props}
       >
         {/* Image Container */}
         <div
-         className={cn(
-           "relative flex items-center justify-center overflow-hidden bg-white",
-           isHorizontal
-             ? "w-40 md:w-48 shrink-0"
-             : "h-[520px] md:h-[560px] w-full"
+          className={cn(
+            "relative flex items-center justify-center bg-white",
+            isHorizontal ? "w-40 md:w-48 shrink-0 overflow-hidden" : "h-[480px] md:h-[520px] w-full overflow-hidden"
           )}
         >
           {imageUrl ? (
             <img
               src={imageUrl}
               alt={name}
-              className="max-h-full max-w-full object-contain p-6 transition-transform duration-500 group-hover:scale-105"
+              className="h-auto w-auto max-h-[92%] max-w-[92%] object-contain transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
+              style={{ imageRendering: "auto" }}
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">
