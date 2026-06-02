@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { PageLayout } from "@/components/PageLayout";
 import { FEEDERS } from "@/data/products";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ export default function FeederCategoryPage() {
         {FEEDERS.map((p) => (
           <Link key={p.slug} to={`/products/${p.slug}`} className="group rounded-xl border border-border bg-card p-4 transition-all hover:shadow-lg hover:border-primary/30">
             <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-muted mb-3">
-              <img src={p.image} alt={p.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+              <img src={p.image} alt={p.name} className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105" />
               {p.badge && <Badge className="absolute top-2 left-2 bg-primary text-white">{p.badge}</Badge>}
             </div>
             <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">{p.name}</h3>

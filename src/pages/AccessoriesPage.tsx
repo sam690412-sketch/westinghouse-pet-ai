@@ -1,13 +1,13 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Droplets, MessageCircle, Phone, Wrench } from "lucide-react";
 
 const accessories = [
-  { name: "飲水機濾芯組（3入）", desc: "四重過濾，有效去除雜質與異味", price: 39000, icon: Droplets, image: "/images/products/d11-ba-main.webp" },
-  { name: "不鏽鋼食盆", desc: "醫療級304不鏽鋼，抗菌易清潔", price: 29000, icon: Wrench, image: "/images/products/m81-main.webp" },
-  { name: "餵食器密封蓋", desc: "防潮密封設計，保持糧食新鮮", price: 19000, icon: Wrench, image: "/images/products/m12-main.webp" },
+  { name: "飲水機濾芯組（3入）", desc: "四重過濾，有效去除雜質與異味", price: 39000, icon: Droplets, image: "/images/products/card/d11-ba-card.webp" },
+  { name: "不鏽鋼食盆", desc: "醫療級304不鏽鋼，抗菌易清潔", price: 29000, icon: Wrench, image: "/images/products/card/m81-card.webp" },
+  { name: "餵食器密封蓋", desc: "防潮密封設計，保持糧食新鮮", price: 19000, icon: Wrench, image: "/images/products/card/m12-card.webp" },
 ];
 
 export default function AccessoriesPage() {
@@ -22,7 +22,7 @@ export default function AccessoriesPage() {
         {accessories.map((item) => (
           <Card key={item.name} className="overflow-hidden">
             <div className="aspect-[16/9] overflow-hidden bg-muted">
-              <img src={item.image} alt={item.name} className="h-full w-full object-cover opacity-80" />
+              <img src={item.image} alt={item.name} className="h-full w-full object-contain p-4 opacity-80" />
             </div>
             <CardContent className="p-4">
               <h3 className="font-semibold">{item.name}</h3>
