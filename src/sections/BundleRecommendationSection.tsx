@@ -39,8 +39,8 @@ const BUNDLE_MAP: Record<string, Bundle[]> = {
       id: "b-m81-1",
       name: "新手飼主入門組",
       items: [
-        { name: "M81 鮮濕糧智慧餵食器", price: 598000, image: "/images/products/m81-01.webp" },
-        { name: "D11-BA 智慧寵物飲水機", price: 248000, image: "/images/products/d11-ba-01.webp" },
+        { name: "M81 鮮濕糧智慧餵食器", price: 598000, image: "/images/products/card/m81-card.webp" },
+        { name: "D11-BA 智慧寵物飲水機", price: 248000, image: "/images/products/card/d11-ba-card.webp" },
       ],
       bundlePrice: 796000,
       originalPrice: 846000,
@@ -55,8 +55,8 @@ const BUNDLE_MAP: Record<string, Bundle[]> = {
       id: "b-m12-1",
       name: "全方位照護組",
       items: [
-        { name: "M12 智慧全景餵食器", price: 328000, image: "/images/products/m12-01.webp" },
-        { name: "D61 智慧不鏽鋼飲水機", price: 328000, image: "/images/products/d61-01.webp" },
+        { name: "M12 智慧全景餵食器", price: 328000, image: "/images/products/card/m12-card.webp" },
+        { name: "D61 智慧不鏽鋼飲水機", price: 328000, image: "/images/products/card/d61-card.webp" },
       ],
       bundlePrice: 616000,
       originalPrice: 656000,
@@ -71,8 +71,8 @@ const BUNDLE_MAP: Record<string, Bundle[]> = {
       id: "b-m31-1",
       name: "趣味互動組",
       items: [
-        { name: "M31 智慧扭蛋餵食器", price: 268000, image: "/images/products/m31-01.webp" },
-        { name: "D11-BA 智慧寵物飲水機", price: 248000, image: "/images/products/d11-ba-01.webp" },
+        { name: "M31 智慧扭蛋餵食器", price: 268000, image: "/images/products/card/m31-card.webp" },
+        { name: "D11-BA 智慧寵物飲水機", price: 248000, image: "/images/products/card/d11-ba-card.webp" },
       ],
       bundlePrice: 496000,
       originalPrice: 516000,
@@ -86,8 +86,8 @@ const BUNDLE_MAP: Record<string, Bundle[]> = {
       id: "b-d11ba-1",
       name: "飲水升級組",
       items: [
-        { name: "D11-BA 智慧寵物飲水機", price: 248000, image: "/images/products/d11-ba-01.webp" },
-        { name: "M12 智慧全景餵食器", price: 328000, image: "/images/products/m12-01.webp" },
+        { name: "D11-BA 智慧寵物飲水機", price: 248000, image: "/images/products/card/d11-ba-card.webp" },
+        { name: "M12 智慧全景餵食器", price: 328000, image: "/images/products/card/m12-card.webp" },
       ],
       bundlePrice: 556000,
       originalPrice: 576000,
@@ -102,8 +102,8 @@ const BUNDLE_MAP: Record<string, Bundle[]> = {
       id: "b-d61-1",
       name: "多貓家庭必備組",
       items: [
-        { name: "D61 智慧不鏽鋼飲水機", price: 328000, image: "/images/products/d61-01.webp" },
-        { name: "M81 鮮濕糧智慧餵食器", price: 598000, image: "/images/products/m81-01.webp" },
+        { name: "D61 智慧不鏽鋼飲水機", price: 328000, image: "/images/products/card/d61-card.webp" },
+        { name: "M81 鮮濕糧智慧餵食器", price: 598000, image: "/images/products/card/m81-card.webp" },
       ],
       bundlePrice: 896000,
       originalPrice: 926000,
@@ -217,7 +217,7 @@ function BundleCard({ bundle, isVisible }: { bundle: Bundle; isVisible: boolean 
               <img
                 src={item.image}
                 alt={item.name}
-                className="h-14 w-14 rounded-lg object-cover"
+                className="h-14 w-14 rounded-lg object-contain bg-white p-1"
                 loading="lazy"
               />
               <div className="min-w-0 flex-1">
