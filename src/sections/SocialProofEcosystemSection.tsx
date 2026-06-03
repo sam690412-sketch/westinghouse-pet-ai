@@ -12,7 +12,7 @@ const socialProofs = [
     platform: "instagram" as const,
     username: "貓奴小雅",
     avatar: "雅",
-    image: "/images/social/m81-social.jpg",
+    image: "/images/social/instagram-m81.jpg",
     caption: "M81 鮮濕糧餵食器真的太方便了！鮮食保鮮功能超棒，濕糧放半天還是涼涼的。攝影機還能遠端看貓咪吃飯，上班也能療癒一下 🐱💕\n#WestinghousePet #M81 #智能餵食器",
     likes: 126,
     comments: 23,
@@ -23,7 +23,7 @@ const socialProofs = [
     username: "林建宏",
     group: "貓咪用品分享社團",
     avatar: "林",
-    image: "/images/social/m12-social.jpg",
+    image: "/images/social/facebook-m12.jpg",
     caption: "M12 全景餵食器用了三個月的心得分享！密封效果很好，乾糧放兩週還是脆的。APP 操作很直覺，全景攝影機畫質也超清晰。推薦給上班族！",
     likes: 89,
     comments: 34,
@@ -34,21 +34,34 @@ const socialProofs = [
     platform: "threads" as const,
     username: "momo_cat_mom",
     avatar: "M",
-    content: "回購第二台 M31 扭蛋餵食器了！！第一台用了 8 個月完全沒問題，這次買給爸媽家的貓咪。扭蛋造型超可愛，放在客廳像擺飾品 😂 他們看到 APP 可以遠端看貓咪吃飯就說要一台",
+    image: "/images/social/threads-m31.jpg",
+    caption: "回購第二台 M31 扭蛋餵食器了！！第一台用了 8 個月完全沒問題，扭蛋造型超可愛，放在客廳像擺飾品 😂 他們看到 APP 可以遠端看貓咪吃飯就說要一台",
     likes: 67,
     replies: 15,
     reposts: 8,
     time: "1天前",
   },
   {
-    platform: "community" as const,
+    platform: "instagram" as const,
     username: "王小美",
-    group: "台北貓咪交流群",
     avatar: "美",
-    content: "跟大家分享一下，上週買的 D61 不鏽鋼飲水機到貨了！4L 大容量，我家三隻貓終於不用搶水碗了。不鏽鋼質感超棒，47 天續航也很給力。客服 LINE 回覆超快！",
-    likes: 45,
+    image: "/images/social/lifestyle-d11ba.jpg",
+    caption: "D11-BA 飲水機到貨！2.5L 大容量，我家兩隻貓終於不用搶水碗了。不鏽鋼質感超棒，飲水監控功能讓我超安心 💦\n#WestinghousePet #寵物飲水機",
+    likes: 98,
     comments: 18,
     time: "5天前",
+  },
+  {
+    platform: "facebook" as const,
+    username: "張大偉",
+    group: "多貓家庭交流區",
+    avatar: "偉",
+    image: "/images/social/review-d61.jpg",
+    caption: "D61 不鏽鋼飲水機使用一個月心得：4L 容量三隻貓夠用，47 天續航根本忘了要充電。全不鏽鋼材質質感一流，拆洗超方便。大推！",
+    likes: 72,
+    comments: 28,
+    shares: 8,
+    time: "4天前",
   },
 ];
 
@@ -109,7 +122,7 @@ export function SocialProofEcosystemSection({ limit }: { limit?: number }) {
         </div>
 
         {/* Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {displayProofs.map((proof, i) => (
             <SocialCard key={proof.username} proof={proof} index={i} />
           ))}
@@ -144,14 +157,12 @@ function SocialCard({
     instagram: "from-purple-500 via-pink-500 to-orange-400",
     facebook: "from-blue-600 to-blue-400",
     threads: "from-neutral-900 to-neutral-600",
-    community: "from-emerald-600 to-teal-400",
   };
 
   const platformLabels = {
     instagram: "Instagram",
     facebook: "Facebook",
     threads: "Threads",
-    community: "貓咪社團",
   };
 
   return (
@@ -172,7 +183,6 @@ function SocialCard({
         {proof.platform === "instagram" && <Instagram className="h-4 w-4 text-white" />}
         {proof.platform === "facebook" && <Facebook className="h-4 w-4 text-white" />}
         {proof.platform === "threads" && <MessageSquare className="h-4 w-4 text-white" />}
-        {proof.platform === "community" && <Users className="h-4 w-4 text-white" />}
         <span className="text-xs font-semibold text-white">
           {platformLabels[proof.platform]}
         </span>
@@ -189,7 +199,7 @@ function SocialCard({
           <img
             src={proof.image}
             alt={`${proof.username} 的分享`}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="h-full w-full object-contain bg-white transition-transform duration-500 group-hover:scale-105"
             loading="lazy"
           />
         </div>
@@ -209,7 +219,7 @@ function SocialCard({
 
         {/* Caption/Content */}
         <Text variant="bodySmall" color="muted" className="mt-2 line-clamp-4 flex-1 leading-relaxed">
-          {"caption" in proof ? proof.caption : proof.content}
+          {proof.caption}
         </Text>
 
         {/* Footer */}
