@@ -1,0 +1,4 @@
+Contact: mailto:support@westinghousepet.com.tw
+Expires: 2027-06-01T00:00:00.000Z
+Preferred-Languages: zh-TW, en
+Policy: https://westinghousepet.com.tw/privacy
