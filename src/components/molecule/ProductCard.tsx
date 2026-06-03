@@ -79,7 +79,7 @@ export const ProductCard = forwardRef<HTMLDivElement, ProductCardProps>(
             <img
               src={cardImage}
               alt={name}
-              className="max-h-[78%] max-w-[78%] object-contain p-6 transition-transform duration-500 group-hover:scale-105"
+              className="max-h-[70%] max-w-[70%] object-contain p-6 transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
             />
           ) : (

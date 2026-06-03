@@ -390,8 +390,26 @@ function getStaticHeroSlides(): CMSHeroSlide[] {
       subtitle: "Westinghouse Pet 台灣官方旗艦店 — 智能寵物用品領導品牌，滿額免運",
       ctaLabel: "探索全系列商品",
       ctaHref: "/products",
-      image: { url: "/images/homepage-hero.jpg", alt: "Westinghouse Pet 智能寵物用品與毛孩的溫馨日常" },
+      image: { url: "/images/hero/hero-01.webp", alt: "M81 智慧餵食器與毛孩的溫馨日常" },
       badge: "滿額免運",
+    },
+    {
+      id: "hero-002",
+      title: "智慧餵食\n出差也不怕",
+      subtitle: "M12 全景餵食器 — 隨時掌握寵物進食狀況",
+      ctaLabel: "了解餵食器系列",
+      ctaHref: "/category/feeder",
+      image: { url: "/images/hero/hero-02.webp", alt: "M12 全景餵食器廚房情境" },
+      badge: "上班族推薦",
+    },
+    {
+      id: "hero-003",
+      title: "活水循環\n貓咪愛上喝水",
+      subtitle: "D61 不鏽鋼飲水機 — 城市夜景中的寵物時光",
+      ctaLabel: "了解飲水機系列",
+      ctaHref: "/category/water",
+      image: { url: "/images/hero/hero-03.webp", alt: "D61 不鏽鋼飲水機黃昏情境" },
+      badge: "多貓家庭必備",
     },
   ];
 }

@@ -42,6 +42,7 @@ export interface CMSProduct {
   solutions: string[] | null;
   hero_image_url: string | null;
   images: Array<{ image?: string; alt?: string }> | null;
+  detailImage: string | null;
   features: CMSFeature[] | null;
   specs: CMSSpec[] | null;
   faq_items: CMSProductFAQ[] | null;
