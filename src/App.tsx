@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router";
+import { Routes, Route } from "react-router-dom";
 import { Header } from "@/components/organism/Header";
 import { Footer } from "@/components/organism/Footer";
 import { CartDrawer } from "@/components/organism/CartDrawer";
