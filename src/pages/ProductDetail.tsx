@@ -43,12 +43,20 @@ import {
 /*  DATA MAPS                                                        */
 /* ================================================================ */
 
-const DETAIL_IMAGE_MAP: Record<string, string> = {
-  "m81-fresh-food-feeder": "/images/products/detail/m81-detail.webp",
-  "m12-panoramic-feeder": "/images/products/detail/m12-detail.webp",
-  "m31-gashapon-feeder": "/images/products/detail/m31-detail.webp",
-  "d11ba-water-dispenser": "/images/products/detail/d11-ba-detail.webp",
-  "d61-stainless-dispenser": "/images/products/detail/d61-detail.webp",
+const DETAIL_DIR_MAP: Record<string, string> = {
+  "m81-fresh-food-feeder": "/images/products/detail/m81/",
+  "m12-panoramic-feeder": "/images/products/detail/m12/",
+  "m31-gashapon-feeder": "/images/products/detail/m31/",
+  "d11ba-water-dispenser": "/images/products/detail/d11-ba/",
+  "d61-stainless-dispenser": "/images/products/detail/d61/",
+};
+
+const DETAIL_COUNTS: Record<string, number> = {
+  "m81-fresh-food-feeder": 22,
+  "m12-panoramic-feeder": 20,
+  "m31-gashapon-feeder": 19,
+  "d11ba-water-dispenser": 15,
+  "d61-stainless-dispenser": 12,
 };
 
 const PET_TAGS_MAP: Record<string, string[]> = {
@@ -109,11 +117,11 @@ const COMPARISON_DATA = {
 };
 
 const LIFESTYLE_IMAGE_MAP: Record<string, string> = {
-  "m81-fresh-food-feeder": "/images/products/m81-lifestyle.jpg",
-  "m12-panoramic-feeder": "/images/products/m12-lifestyle.jpg",
-  "m31-gashapon-feeder": "/images/products/m31-lifestyle.jpg",
-  "d11ba-water-dispenser": "/images/products/d11ba-lifestyle.jpg",
-  "d61-stainless-dispenser": "/images/products/d61-lifestyle.jpg",
+  "m81-fresh-food-feeder": "/images/products/card/m81-card.webp",
+  "m12-panoramic-feeder": "/images/products/card/m12-card.webp",
+  "m31-gashapon-feeder": "/images/products/card/m31-card.webp",
+  "d11ba-water-dispenser": "/images/products/card/d11-ba-card.webp",
+  "d61-stainless-dispenser": "/images/products/card/d61-card.webp",
 };
 
 const SEO_MAP: Record<string, { title: string; description: string }> = {
@@ -275,7 +283,11 @@ export default function ProductDetail() {
   /* ---- derived data ---- */
   const petTags = PET_TAGS_MAP[product.slug] || [];
   const highlights = HIGHLIGHTS_MAP[product.slug] || [];
-  const detailImg = DETAIL_IMAGE_MAP[product.slug];
+  const detailDir = DETAIL_DIR_MAP[product.slug];
+  const detailCount = DETAIL_COUNTS[product.slug] || 0;
+  const detailImages = detailDir
+    ? Array.from({ length: detailCount }, (_, i) => `${detailDir}${String(i + 1).padStart(2, '0')}.webp`)
+    : [];
   const lifestyleImg = LIFESTYLE_IMAGE_MAP[product.slug];
   const showComparison = ["m81-fresh-food-feeder", "m12-panoramic-feeder", "m31-gashapon-feeder"].includes(product.slug);
 
@@ -422,16 +434,21 @@ export default function ProductDetail() {
       )}
 
       {/* ====== 產品詳細介紹 ====== */}
-      {detailImg && (
+      {detailImages.length > 0 && (
         <section className="w-full py-12">
-          <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
+          <div className="mx-auto max-w-[800px] px-4 sm:px-6">
             <SectionTitle>產品詳細介紹</SectionTitle>
-            <img
-              src={detailImg}
-              alt={`${product.name} 詳細介紹`}
-              className="w-full object-contain"
-              loading="lazy"
-            />
+            <div className="flex flex-col gap-6">
+              {detailImages.map((src, index) => (
+                <img
+                  key={index}
+                  src={src}
+                  alt={`${product.name} 詳細介紹 ${index + 1}`}
+                  className="w-full rounded-lg object-contain shadow-sm"
+                  loading="lazy"
+                />
+              ))}
+            </div>
           </div>
         </section>
       )}

@@ -1,4 +1,4 @@
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 import { PageLayout } from "@/components/PageLayout";
 import { SOLUTIONS } from "@/data/solutions";
 import { PRODUCTS } from "@/data/products";
@@ -75,7 +75,7 @@ export default function SolutionDetailPage() {
             <Link key={p.slug} to={`/products/${p.slug}`} className="group block">
               <Card className="overflow-hidden transition-all hover:shadow-md">
                 <div className="aspect-[16/9] overflow-hidden bg-muted">
-                  <img src={p.image} alt={p.name} className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                  <img src={p.image} alt={p.name} className="h-full w-full object-contain p-2 transition-transform group-hover:scale-105" />
                 </div>
                 <CardContent className="p-3">
                   <h3 className="font-medium text-sm group-hover:text-primary transition-colors">{p.name}</h3>

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { PageLayout } from "@/components/PageLayout";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,7 +64,7 @@ export default function BrandStoryPage() {
           </ul>
         </div>
         <div className="rounded-xl bg-muted overflow-hidden">
-          <img src="/images/family-scene.jpg" alt="Westinghouse Pet 台灣官方" className="w-full h-full object-cover" />
+          <img src="/images/hero/hero-01.webp" alt="Westinghouse Pet 台灣官方" className="w-full h-full object-cover" />
         </div>
       </div>
 

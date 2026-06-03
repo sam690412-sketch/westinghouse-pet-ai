@@ -1,6 +1,6 @@
 import { env } from "@/lib/env";
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router";
 import {
   CheckCircle2,
   ShoppingBag,

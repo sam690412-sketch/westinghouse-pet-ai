@@ -1,4 +1,4 @@
-import { useParams, useLocation } from "react-router-dom";
+import { useParams, useLocation } from "react-router";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Package, FileText, MessageCircle, HelpCircle } from "lucide-react";
 
