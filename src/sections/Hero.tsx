@@ -102,7 +102,7 @@ export default function Hero({ onScrollToProducts }: HeroProps) {
               <div className="absolute inset-0 bg-wh-orange/20 rounded-full blur-3xl scale-150" />
               {/* Product Image */}
               <img
-                src="/images/feeder-smart.jpg"
+                src="/images/hero/hero-01.webp"
                 alt="Westinghouse Smart Feeder"
                 className="relative w-full max-w-md rounded-2xl shadow-2xl"
               />

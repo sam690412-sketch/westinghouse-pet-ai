@@ -58,7 +58,7 @@ export function ProductHeroSection({ product }: ProductHeroSectionProps) {
   if (product.hero_image_url) galleryImages.push({ url: product.hero_image_url, alt: product.name });
   // @ts-ignore — some products have lifestyle images via CMS
   if ((product as Record<string, unknown>).lifestyle_image_url) galleryImages.push({ url: String((product as Record<string, unknown>).lifestyle_image_url), alt: `${product.name} 情境圖` });
-  if (galleryImages.length === 0) galleryImages.push({ url: "/images/placeholder-product.jpg", alt: product.name });
+  if (galleryImages.length === 0) galleryImages.push({ url: "/images/products/card/m81-card.webp", alt: product.name });
 
   const discount = product.compare_at_price
     ? Math.round((1 - product.price / product.compare_at_price) * 100)
@@ -73,7 +73,7 @@ export function ProductHeroSection({ product }: ProductHeroSectionProps) {
         <div className="space-y-3">
           <div className="relative aspect-square overflow-hidden rounded-xl border border-border bg-neutral-100">
             <img
-              src={galleryImages[selectedImage]?.url || "/images/placeholder-product.jpg"}
+              src={galleryImages[selectedImage]?.url || "/images/products/card/m81-card.webp"}
               alt={galleryImages[selectedImage]?.alt || product.name}
               className="h-full w-full object-cover"
               loading="eager"

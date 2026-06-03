@@ -46,7 +46,7 @@ const conversations: LineConversation[] = [
     title: "使用回饋",
     subtitle: "真實飼主反饋",
     avatar: "💕",
-    image: "/images/line-chat-feedback.jpg",
+    image: "/images/social/social-02.webp",
     messages: [
       { type: "customer", content: "跟你們回報！用了兩個禮拜，我家貓咪喝水量真的變多了 🐱💦", time: "20:15" },
       { type: "customer", content: "之前獸醫說牠喝太少要留意腎臟，現在我每天看 APP 紀錄都安心多了", time: "20:16" },

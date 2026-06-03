@@ -17,6 +17,7 @@ export { ProductSpecsSection } from "./ProductSpecsSection";
 export { ProductDescriptionSection } from "./ProductDescriptionSection";
 export { ProductHowToSection } from "./ProductHowToSection";
 export { ProductFAQSection } from "./ProductFAQSection";
+export { ProductDetailImagesSection } from "./ProductDetailImagesSection";
 export { RelatedProductsSection } from "./RelatedProductsSection";
 
 // Conversion Optimization Sections

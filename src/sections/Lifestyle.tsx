@@ -37,7 +37,7 @@ export default function Lifestyle() {
       {/* Background Image */}
       <div className="absolute inset-0">
         <img
-          src="/images/lifestyle-1.jpg"
+          src="/images/reviews/review-01.webp"
           alt="Lifestyle"
           className="w-full h-full object-cover"
         />

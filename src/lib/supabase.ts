@@ -42,7 +42,7 @@ export function isSupabaseConfigured(): boolean {
   return _configured;
 }
 
-export const FALLBACK_IMAGE = "/images/placeholder-product.jpg";
+export const FALLBACK_IMAGE = "/images/products/card/m81-card.webp";
 
 export function buildImageUrl(
   pathOrUrl: string | null | undefined,

@@ -86,7 +86,7 @@ export default function Solution() {
             <div className="relative">
               <div className="absolute inset-0 bg-wh-orange/10 rounded-2xl blur-2xl" />
               <img
-                src="/images/lifestyle-2.jpg"
+                src="/images/reviews/review-05.webp"
                 alt="Pet using Westinghouse feeder"
                 className="relative w-full rounded-2xl shadow-xl"
               />

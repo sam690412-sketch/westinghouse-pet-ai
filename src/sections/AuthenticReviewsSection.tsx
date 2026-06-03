@@ -38,7 +38,7 @@ const reviews: AuthenticReview[] = [
     product: "M81 鮮濕糧智慧餵食器",
     content:
       "餵食器跟飲水機二合一真的太方便了！我家貓咪原本不愛喝水，換了這台之後每天都會主動去喝。而且鮮食保鮮功能超棒，濕糧放半天還是涼涼的。客服回覆也很快，有問題LINE問就解決了 👍",
-    photos: ["/images/reviews/review-m81-01.jpg"],
+    photos: ["/images/reviews/review-01.webp"],
     likes: 42,
     verified: true,
     badge: "購買已驗證",
@@ -53,7 +53,7 @@ const reviews: AuthenticReview[] = [
     product: "D61 智慧不鏽鋼飲水機",
     content:
       "家裡三隻貓本來要搶水碗，現在4L大容量完全不夠搶。安裝超簡單，5分鐘搞定。最滿意的是續航力，充一次電用了一個多月還有電。台灣一年保固很安心。",
-    photos: ["/images/reviews/review-d61-01.jpg"],
+    photos: ["/images/reviews/review-05.webp"],
     likes: 38,
     verified: true,
     badge: "多貓家庭推薦",
@@ -68,7 +68,7 @@ const reviews: AuthenticReview[] = [
     product: "M12 智慧全景餵食器",
     content:
       "租屋族必備！每次加班到很晚都很擔心毛孩餓肚子，現在每天固定時間自動餵食，還能從手機看牠吃飯的樣子超療癒。密封效果真的很好，乾糧放兩週還是脆的。",
-    photos: ["/images/reviews/review-m12-01.jpg"],
+    photos: ["/images/reviews/review-02.webp"],
     likes: 56,
     verified: true,
     badge: "上班族必備",
@@ -83,7 +83,7 @@ const reviews: AuthenticReview[] = [
     product: "D11-BA 智慧寵物飲水機",
     content:
       "飲水監控功能很實用，APP會記錄每天的飲水量，有異常還會通知。不鏽鋼材質質感很好，清潔也很方便拆洗。唯一的缺點是2.5L對我家兩隻貓來說有時要勤換水，不過整體還是很推薦！",
-    photos: ["/images/reviews/review-d11ba-01.jpg"],
+    photos: ["/images/reviews/review-04.webp"],
     likes: 23,
     verified: true,
     badge: "健康管理推薦",
@@ -97,7 +97,7 @@ const reviews: AuthenticReview[] = [
     product: "M31 智慧扭蛋餵食器",
     content:
       "扭蛋造型超級可愛！！！放在客廳朋友都問這是什麼。我家的貓好像也知道這是牠的，每次出糧都會跑過來等。錄音功能也很好玩，我錄了自己的聲音叫牠來吃飯 🐱",
-    photos: ["/images/reviews/review-m31-01.jpg"],
+    photos: ["/images/reviews/review-03.webp"],
     likes: 71,
     verified: true,
     badge: "顏值擔當",
@@ -112,7 +112,7 @@ const reviews: AuthenticReview[] = [
     product: "M81 鮮濕糧智慧餵食器",
     content:
       "出差一週完全不擔心！之前請人來餵貓花超多錢，現在自動餵食器+大容量飲水機一次搞定。15天續航真的很夠用，回家看APP紀錄貓咪每天都有乖乖吃飯。",
-    photos: ["/images/reviews/review-m81-02.jpg"],
+    photos: ["/images/reviews/review-06.webp"],
     likes: 45,
     verified: true,
     badge: "出差族推薦",
