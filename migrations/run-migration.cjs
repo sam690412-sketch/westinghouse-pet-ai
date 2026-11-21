@@ -5,8 +5,12 @@ const fs = require("fs");
 const path = require("path");
 const { Client } = require("pg");
 
-const DATABASE_URI = process.env.DATABASE_URI ||
-  "postgresql://postgres.frytggfrbzjhxyaqngum:Whpet@2026db!@aws-1-ap-southeast-2.pooler.supabase.com:5432/postgres";
+const DATABASE_URI = process.env.DATABASE_URI;
+
+if (!DATABASE_URI) {
+  console.error("DATABASE_URI is required. Migration aborted.");
+  process.exit(1);
+}
 
 const MIGRATION_FILE = process.argv[2] || path.join(__dirname, "001_create_commerce_products.sql");
 
