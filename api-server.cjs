@@ -365,7 +365,7 @@ const routes = {
   "/api/learn-articles": async (sp) => {
     const limit = Math.min(parseInt(sp.get("limit") || "10", 10), 50);
     const result = await queryDB(
-      `SELECT id, slug, title, excerpt, content, category, cover_image_url, author, read_time, published_at, updated_at FROM learn_articles ORDER BY published_at DESC NULLS LAST LIMIT $1`, [limit]
+      `SELECT id, slug, title, excerpt, content, category, cover_image_url, author, read_time, published_at, updated_at FROM learn_articles WHERE is_published = true AND deleted_at IS NULL ORDER BY published_at DESC NULLS LAST LIMIT $1`, [limit]
     );
     return { data: result.rows };
   },
@@ -374,7 +374,7 @@ const routes = {
   "/api/reviews": async (sp) => {
     const limit = Math.min(parseInt(sp.get("limit") || "10", 10), 50);
     const result = await queryDB(
-      `SELECT id, author_name, avatar_url, rating, title, content, product_sku, product_slug, verified, helpful_count, created_at FROM reviews ORDER BY created_at DESC LIMIT $1`, [limit]
+      `SELECT id, author_name, avatar_url, rating, title, content, product_sku, product_slug, COALESCE(verified, is_verified_purchase) AS verified, helpful_count, created_at FROM reviews WHERE is_published = true ORDER BY created_at DESC LIMIT $1`, [limit]
     );
     return { data: result.rows };
   },
