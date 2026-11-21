@@ -8,6 +8,7 @@ import {
   ArrowRight,
   AlertTriangle,
 } from "lucide-react";
+import { useNavigate } from "react-router";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,6 +24,7 @@ export interface CartDrawerProps {
 const FREE_SHIPPING_THRESHOLD = 1500;
 
 export function CartDrawer({ open, onClose }: CartDrawerProps) {
+  const navigate = useNavigate();
   const {
     items,
     cartCount,
@@ -235,7 +237,10 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
               <Button
                 className="w-full gap-2 text-base font-semibold shadow-button transition-all hover:shadow-button-hover active:scale-[0.98]"
                 size="lg"
-                onClick={() => (window.location.href = "/checkout")}
+                onClick={() => {
+                  onClose();
+                  navigate("/checkout");
+                }}
               >
                 前往結帳
                 <ArrowRight className="h-5 w-5" />
