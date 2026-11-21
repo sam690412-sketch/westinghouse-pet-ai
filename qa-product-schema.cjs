@@ -47,7 +47,8 @@ async function tablePresence(client) {
   return Object.fromEntries(result.rows.map(({ name, present }) => [name, present]));
 }
 
-async function repairCatalog(client, log = console.log) {
+async function repairCatalog(client, log = console.log, { dryRun = false, seedQaInventory = true } = {}) {
+  const scope = seedQaInventory ? "QA" : "Release";
   await client.query("BEGIN");
   try {
     await client.query("SET LOCAL search_path = public, pg_catalog");
@@ -56,7 +57,7 @@ async function repairCatalog(client, log = console.log) {
     await client.query("SELECT pg_advisory_xact_lock(862021, 3001)");
 
     const before = await tablePresence(client);
-    log("QA schema before", JSON.stringify(before));
+    log(`${scope} schema before`, JSON.stringify(before));
 
     if (!before.product_contents) {
       await client.query(section(
@@ -74,8 +75,20 @@ async function repairCatalog(client, log = console.log) {
       // Supabase-specific roles are absent from standalone Render PostgreSQL.
       await client.query(section(
         readSQL("migrations/001_create_commerce_products.sql"),
-        "-- 4. Indexes", "-- 6. Seed data"
+        "-- 4. Indexes", "-- 5. Auto-update updated_at"
       ));
+      await client.query(`
+        CREATE FUNCTION public.set_commerce_product_updated_at()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          NEW.updated_at = now();
+          RETURN NEW;
+        END;
+        $$;
+        CREATE TRIGGER trg_commerce_products_updated_at
+          BEFORE UPDATE ON public.commerce_products
+          FOR EACH ROW EXECUTE FUNCTION public.set_commerce_product_updated_at();
+      `);
     }
 
     if (!before.early_bird_reservations) {
@@ -83,6 +96,7 @@ async function repairCatalog(client, log = console.log) {
       await client.query("ALTER TABLE public.early_bird_reservations ENABLE ROW LEVEL SECURITY");
     }
 
+    if (before.product_prices) await client.query("LOCK TABLE public.product_prices IN SHARE ROW EXCLUSIVE MODE");
     const priceSeed = readSQL("migrations/20261121_approved_tw_prices.sql");
     await client.query(section(priceSeed, "CREATE TABLE IF NOT EXISTS product_prices (", "COMMIT;"));
     if (!before.product_prices) {
@@ -106,19 +120,19 @@ async function repairCatalog(client, log = console.log) {
 
       await client.query(`
         INSERT INTO public.commerce_products
-          (product_content_id, sku, price, compare_at_price, stock_quantity, stock_status)
-        SELECT pc.id, pc.sku, pp.promo_twd, pp.msrp_twd, $4, $5
+          (product_content_id, sku, price, compare_at_price, stock_quantity, stock_status, is_active)
+        SELECT pc.id, pc.sku, pp.promo_twd, pp.msrp_twd, $4, $5, $6
         FROM public.product_contents pc
         CROSS JOIN public.product_prices pp
         WHERE pc.sku = $1 AND pp.sku = $2 AND pc.slug = $3 AND pc.deleted_at IS NULL
         ON CONFLICT (sku) DO NOTHING
-      `, [sku, model, slug, stock, stockStatus]);
+      `, [sku, model, slug, seedQaInventory ? stock : 0, seedQaInventory ? stockStatus : "out_of_stock", seedQaInventory]);
 
       await client.query(`
         UPDATE public.commerce_products cp
           SET price = pp.promo_twd, compare_at_price = pp.msrp_twd
         FROM public.product_prices pp
-        WHERE cp.sku = $1 AND pp.sku = $2 AND cp.currency = 'TWD' AND cp.is_active
+        WHERE cp.sku = $1 AND pp.sku = $2 AND cp.currency = 'TWD'
           AND (cp.price, cp.compare_at_price) IS DISTINCT FROM (pp.promo_twd, pp.msrp_twd)
       `, [sku, model]);
 
@@ -126,15 +140,15 @@ async function repairCatalog(client, log = console.log) {
         SELECT cp.sku FROM public.commerce_products cp
         JOIN public.product_contents pc ON pc.id = cp.product_content_id AND pc.sku = cp.sku
         ${MARKET_PRICE_JOIN}
-        WHERE cp.sku = $1 AND pc.slug = $2 AND pc.deleted_at IS NULL AND cp.is_active
+        WHERE cp.sku = $1 AND pc.slug = $2 AND pc.deleted_at IS NULL
           AND cp.price = pp.promo_twd AND cp.compare_at_price = pp.msrp_twd
       `, [sku, slug]);
-      if (result.rowCount !== 1) throw new Error("QA catalog identity conflict");
+      if (result.rowCount !== 1) throw new Error("Catalog identity conflict");
     }
     const after = await tablePresence(client);
-    if (!Object.values(after).every(Boolean)) throw new Error("QA schema incomplete");
-    await client.query("COMMIT");
-    log("QA schema after", JSON.stringify(after));
+    if (!Object.values(after).every(Boolean)) throw new Error("Catalog schema incomplete");
+    await client.query(dryRun ? "ROLLBACK" : "COMMIT");
+    log(`${scope} schema ${dryRun ? "validated and rolled back" : "after"}`, JSON.stringify(after));
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
@@ -181,4 +195,4 @@ async function prepareRenderQaCatalog() {
   }
 }
 
-module.exports = { MARKET_PRICE_JOIN, prepareRenderQaCatalog, repairCatalog };
+module.exports = { PRICE_MAPPING, MARKET_PRICE_JOIN, prepareRenderQaCatalog, repairCatalog };

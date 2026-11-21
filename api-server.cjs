@@ -168,19 +168,20 @@ function requireAdmin() { return {error:'Legacy admin API disabled',status:403};
 /*  RATE LIMITING                                                     */
 /* ================================================================ */
 
-const rateLimits = new Map(); // ip -> { count, resetAt }
+const rateLimits = new Map(); // request scope and IP -> { count, resetAt }
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 60; // requests per window (public)
 const RATE_LIMIT_ADMIN_MAX = 30; // requests per window (admin)
 
-function checkRateLimit(ip, isAdmin = false) {
+function checkRateLimit(ip, scope) {
+  const key = `${scope}:${ip}`;
   const now = Date.now();
-  const entry = rateLimits.get(ip);
+  const entry = rateLimits.get(key);
   if (!entry || now > entry.resetAt) {
-    rateLimits.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    rateLimits.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
     return { ok: true };
   }
-  const max = isAdmin ? RATE_LIMIT_ADMIN_MAX : RATE_LIMIT_MAX;
+  const max = scope === "admin" ? RATE_LIMIT_ADMIN_MAX : RATE_LIMIT_MAX;
   if (entry.count >= max) {
     return { ok: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
   }
@@ -191,8 +192,8 @@ function checkRateLimit(ip, isAdmin = false) {
 // Clean up expired entries every 10 minutes
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, entry] of rateLimits) {
-    if (now > entry.resetAt) rateLimits.delete(ip);
+  for (const [key, entry] of rateLimits) {
+    if (now > entry.resetAt) rateLimits.delete(key);
   }
 }, 10 * 60 * 1000);
 
@@ -294,9 +295,10 @@ async function enrichCartItems(items) {
     skus
   );
   const productMap = new Map(result.rows.map((r) => [r.sku, r]));
-  return items.map((item) => {
+  return items.flatMap((item) => {
     const sku = item.sku || item.product_sku;
     const product = productMap.get(sku);
+    if (!product) return [];
     const qty = item.quantity || item.qty || 1;
     const price = product?.price || 0;
     return {
@@ -395,7 +397,12 @@ const routes = {
   // Cart
   "/api/cart/validate": async (_sp, body) => {
     const items = body.items;
-    if (!Array.isArray(items)) return { error: "items array required" };
+    if (!Array.isArray(items) || items.length > 100 ||
+        items.some(item => !isValidSku(item?.sku || item?.product_sku || "") ||
+          !Number.isSafeInteger(item.quantity ?? item.qty) ||
+          (item.quantity ?? item.qty) < 1 || (item.quantity ?? item.qty) > 99)) {
+      return { error: "購物車商品或數量不正確" };
+    }
     const enriched = await enrichCartItems(items);
     const total = enriched.reduce((s, i) => s + i.subtotal, 0);
     return { data: enriched, total };
@@ -412,6 +419,7 @@ const routes = {
     if (quantity > product.stock_quantity) return { error: `庫存不足，僅剩 ${product.stock_quantity} 件` };
     if (quantity > 99) return { error: "最多 99 件" };
     const enriched = await enrichCartItems([{ sku, quantity }]);
+    if (!enriched.length) return { error: "商品已下架" };
     return { data: enriched[0] };
   },
 
@@ -1393,7 +1401,8 @@ const server = http.createServer(async (req, res) => {
 
   // 5. Rate limiting
   const isAdminPath = pathname.startsWith("/api/admin/");
-  const rateLimit = checkRateLimit(ip, isAdminPath);
+  const rateScope = isAdminPath ? "admin" : pathname.startsWith("/api/") ? "api" : "static";
+  const rateLimit = checkRateLimit(ip, rateScope);
   if (!rateLimit.ok) {
     res.writeHead(429, { ...responseHeaders, "Retry-After": String(rateLimit.retryAfter) });
     res.end(JSON.stringify({ error: "Rate limit exceeded" }));

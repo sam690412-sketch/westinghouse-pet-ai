@@ -3,11 +3,12 @@ const crypto=require('node:crypto');
 const fs=require('node:fs');
 const path=require('node:path');
 const {Client}=require('pg');
+const {PRICE_MAPPING}=require('./qa-product-schema.cjs');
 const DB=process.env.DATABASE_URL || process.env.DATABASE_URI;
 const SIGNING_KEY=process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_SESSION_SIGNING_KEY;
 const secure=process.env.NODE_ENV==='production';
 const permissions={
- super_admin:['*'],operations_manager:['products.read','prices.write','inventory.write','orders.read','refund.request','settings.request','approvals.read'],
+ super_admin:['*'],operations_manager:['products.read','products.listing.write','prices.write','inventory.write','orders.read','refund.request','settings.request','approvals.read'],
  marketing_editor:['content.write'],customer_support:['orders.read','tickets.write','warranties.write']};
 const client=()=>new Client({connectionString:DB,ssl:process.env.PGSSLMODE==='disable'?false:{rejectUnauthorized:false}});
 async function tx(fn){const c=client();await c.connect();try{await c.query('BEGIN');const out=await fn(c);await c.query('COMMIT');return out}catch(e){await c.query('ROLLBACK');throw e}finally{await c.end()}}
@@ -40,6 +41,64 @@ async function requestChange(a,type,id,after,reason,direct=false){if(typeof reas
  return tx(async c=>{const old=await before(c,type,id);if(!old)return reply(404,{error:'Target not found'});
  if(direct&&a.role==='super_admin'){await apply(c,type,id,after);await c.query('INSERT INTO admin_audit_logs(action_type,target_type,target_id,before_value,after_value,requested_by,approved_by) VALUES($1,$2,$3,$4,$5,$6,$6)',[type,type,id,JSON.stringify(old),JSON.stringify(after),a.id]);return reply(200,{applied:true})}
  const r=await c.query('INSERT INTO admin_approval_requests(action_type,target_type,target_id,before_value,after_value,reason,requester_id,requester_role) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',[type,type,id,JSON.stringify(old),JSON.stringify(after),reason.trim(),a.id,a.role]);return reply(202,{id:r.rows[0].id,status:'pending'})})}
+const catalogSelect = `
+  SELECT pp.sku, pp.name_zh_tw, pp.msrp_twd, pp.retail_twd, pp.promo_twd,
+         mapping.commerce_sku, pc.slug, pc.name AS content_name, pc.hero_image_url, pc.deleted_at IS NOT NULL AS archived,
+         cp.is_active, cp.stock_quantity, cp.stock_status, cp.currency
+  FROM (VALUES ${PRICE_MAPPING}) AS mapping(commerce_sku, price_sku)
+  JOIN public.product_prices pp ON pp.sku = mapping.price_sku
+  LEFT JOIN public.commerce_products cp ON cp.sku = mapping.commerce_sku
+  LEFT JOIN public.product_contents pc ON pc.id = cp.product_content_id AND pc.sku = cp.sku
+`;
+
+function listingIssues(product) {
+  const issues = [];
+  if (!product.slug || !product.content_name?.trim() || product.archived) issues.push("商品內容缺少或已封存");
+  if (!product.hero_image_url?.trim()) issues.push("缺少商品主圖");
+  if (product.currency !== "TWD" || product.promo_twd <= 0 ||
+      product.retail_twd < product.promo_twd || product.msrp_twd < product.retail_twd) {
+    issues.push("臺幣售價設定不完整");
+  }
+  if (!(product.stock_quantity > 0) || !["in_stock", "low_stock"].includes(product.stock_status)) {
+    issues.push("缺貨或庫存尚未確認");
+  }
+  return issues;
+}
+
+async function changeListing(user, sku, { is_active: active, reason }) {
+  if (typeof active !== "boolean" || typeof reason !== "string" ||
+      reason.trim().length < 3 || reason.trim().length > 240) {
+    return reply(400, { error: "請確認上架狀態，並填寫 3–240 字的操作原因" });
+  }
+  return tx(async (connection) => {
+    // Lock the commerce row first so decisions and audit entries are serialized.
+    const locked = await connection.query(
+      "SELECT sku FROM public.commerce_products WHERE sku = $1 FOR UPDATE", [sku]
+    );
+    if (!locked.rowCount) return reply(404, { error: "找不到此商品的庫存資料" });
+    const { rows: [product] } = await connection.query(
+      catalogSelect + " WHERE mapping.commerce_sku = $1", [sku]
+    );
+    if (!product) return reply(404, { error: "找不到此商品的價格資料" });
+    if (product.is_active === active) return reply(200, { data: { is_active: active } });
+
+    const issues = active ? listingIssues(product) : [];
+    if (issues.length) return reply(409, { error: issues.join("、") });
+
+    await connection.query(
+      "UPDATE public.commerce_products SET is_active = $2, updated_at = now() WHERE sku = $1", [sku, active]
+    );
+    const before = JSON.stringify({ is_active: product.is_active });
+    const after = JSON.stringify({ is_active: active, reason: reason.trim() });
+    await connection.query(`
+      INSERT INTO admin_audit_logs
+        (action_type, target_type, target_id, before_value, after_value, requested_by)
+      VALUES ('product_listing', 'commerce_products', $1, $2::jsonb, $3::jsonb, $4)
+    `, [sku, before, after, user.id]);
+    return reply(200, { data: { is_active: active } });
+  });
+}
+
 async function handle(req,pathname,body){
  // Double-submit-style custom header plus same-origin enforcement for cookie authenticated writes.
  if (pathname.startsWith('/api/admin/') && !['GET','HEAD','OPTIONS'].includes(req.method)) {
@@ -54,14 +113,19 @@ try{
  if(pathname==='/api/admin/login'&&req.method==='POST'){
   const email=String(body.email||'').toLowerCase().trim(),password=String(body.password||'');const r=await q('SELECT * FROM admin_users WHERE email=$1 AND is_active=true',[email]);const u=r.rows[0];if(!u||!verify(password,u.password_hash))return reply(401,{error:'Invalid credentials'});
   const token=sign({id:u.id,email:u.email,role:u.role,v:u.session_version,exp:Date.now()+8*3600_000});return reply(200,{id:u.id,email:u.email,role:u.role},{'Set-Cookie':`wh_admin=${token}; HttpOnly; SameSite=Lax; Path=/api/admin; Max-Age=28800${secure?'; Secure':''}`});}
- if(pathname==='/api/products/prices'&&req.method==='GET'){const r=await q('SELECT sku,name_zh_tw,msrp_twd,retail_twd,promo_twd FROM product_prices ORDER BY sku');return reply(200,{data:r.rows})}
+ if(pathname==='/api/products/prices'&&req.method==='GET'){const r=await q(catalogSelect + ' ORDER BY pp.sku');return reply(200,{data:r.rows.map(({sku,name_zh_tw,msrp_twd,retail_twd,promo_twd,is_active,slug,archived})=>({sku,name_zh_tw,msrp_twd,retail_twd,promo_twd,listed:!!(is_active && slug && !archived)}))})}
  if(!pathname.startsWith('/api/admin/'))return null;
  const a=await actor(req);if(!a)return reply(401,{error:'Login required'});
  if(pathname==='/api/admin/me')return reply(200,{id:a.id,email:a.email,role:a.role});
  if(pathname==='/api/admin/logout'&&req.method==='POST')return reply(200,{ok:true},{'Set-Cookie':`wh_admin=; HttpOnly; SameSite=Lax; Path=/api/admin; Max-Age=0${secure?'; Secure':''}`});
- if(pathname==='/api/admin/products'&&req.method==='GET'){if(!requirePermission(a,'products.read'))return reply(403,{error:'Forbidden'});const r=await q('SELECT * FROM product_prices ORDER BY sku');return reply(200,{data:r.rows})}
+ if(pathname==='/api/admin/products'&&req.method==='GET'){if(!requirePermission(a,'products.read'))return reply(403,{error:'Forbidden'});const r=await q(catalogSelect + ' ORDER BY pp.sku');return reply(200,{data:r.rows.map(p=>({...p,listing_issues:listingIssues(p)}))})}
  if(pathname==='/api/admin/users'&&req.method==='GET'){if(a.role!=='super_admin')return reply(403,{error:'Forbidden'});const r=await q('SELECT id,email,display_name,role,is_active FROM admin_users ORDER BY email');return reply(200,{data:r.rows})}
  if(pathname==='/api/admin/approvals'&&req.method==='GET'){if(!requirePermission(a,'approvals.read'))return reply(403,{error:'Forbidden'});const r=await q('SELECT * FROM admin_approval_requests ORDER BY created_at DESC LIMIT 200');return reply(200,{data:r.rows})}
+ const listing = pathname.match(/^\/api\/admin\/products\/(WH-[A-Z0-9]+-TW)\/listing$/);
+ if (listing && req.method === "PATCH") {
+   if (!requirePermission(a, "products.listing.write")) return reply(403, { error: "沒有商品上下架權限" });
+   return await changeListing(a, listing[1], body);
+ }
  const price=pathname.match(/^\/api\/admin\/products\/([^/]+)\/price$/);if(price&&req.method==='PATCH'){if(!requirePermission(a,'prices.write'))return reply(403,{error:'Forbidden'});return requestChange(a,'price_change',decodeURIComponent(price[1]),{msrp_twd:body.msrp_twd,retail_twd:body.retail_twd,promo_twd:body.promo_twd},body.reason,body.direct===true)}
  if(pathname==='/api/admin/store-config'&&req.method==='PATCH'){if(!requirePermission(a,'settings.request')&&a.role!=='super_admin')return reply(403,{error:'Forbidden'});return requestChange(a,'store_setting',body.key,{key:body.key,value:body.value},body.reason,body.direct===true)}
  if(pathname==='/api/admin/inventory/adjust'&&req.method==='POST'){if(!requirePermission(a,'inventory.write'))return reply(403,{error:'Forbidden'});return requestChange(a,'stock_adjustment',body.sku,{sku:body.sku,stock_quantity:body.newQuantity},body.reason,body.direct===true)}
