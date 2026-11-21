@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router";
+import { Routes, Route, useLocation } from "react-router";
 import { Header } from "@/components/organism/Header";
 import { Footer } from "@/components/organism/Footer";
 import { CartDrawer } from "@/components/organism/CartDrawer";
@@ -49,6 +49,8 @@ export default function App() {
 
 function AppInner() {
   const [cartOpen, setCartOpen] = useState(false);
+  const { pathname } = useLocation();
+  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
 
   useEffect(() => {
     logDiagnostics();
@@ -57,12 +59,12 @@ function AppInner() {
 
   return (
     <>
-      <Safe name="Header">
+      {!isAdmin && <Safe name="Header">
         <Header onCartClick={() => setCartOpen(true)} onSearch={() => {}} />
-      </Safe>
+      </Safe>}
 
-      <div className="pt-[60px]">
-        <DegradedBanner />
+      <div className={isAdmin ? undefined : "pt-[60px]"}>
+        {!isAdmin && <DegradedBanner />}
         <LinkInterceptor>
         <Routes>
           {/* Home */}
@@ -117,14 +119,13 @@ function AppInner() {
         </LinkInterceptor>
       </div>
 
-      <Safe name="Footer"><Footer /></Safe>
-
-      <Safe name="CartDrawer">
-        <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
-      </Safe>
-
-      {/* AI Customer Service — floating chat */}
-      <AiChatWidget />
+      {!isAdmin && <>
+        <Safe name="Footer"><Footer /></Safe>
+        <Safe name="CartDrawer">
+          <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+        </Safe>
+        <AiChatWidget />
+      </>}
 
       <ErrorOverlay />
       {features.dev && <HealthCheck compact />}
