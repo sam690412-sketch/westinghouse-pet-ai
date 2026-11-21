@@ -1,7 +1,6 @@
 import {useProductPricing} from '@/context/ProductPricingContext';
 import { PageLayout } from "@/components/PageLayout";
 import { Link } from "react-router";
-import { PRODUCTS, FEEDERS, WATER_DISPENSERS } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 export default function ProductsPage() {
@@ -15,13 +14,13 @@ export default function ProductsPage() {
       {/* Category Filter */}
       <div className="flex flex-wrap gap-2 mb-8">
         <Link to="/products">
-          <Button variant="default" size="sm">全部商品 ({PRODUCTS.length})</Button>
+          <Button variant="default" size="sm">全部商品 ({dynamicProducts.length})</Button>
         </Link>
         <Link to="/products/feeders">
-          <Button variant="outline" size="sm">自動餵食器 ({FEEDERS.length})</Button>
+          <Button variant="outline" size="sm">自動餵食器 ({dynamicProducts.filter(p => p.category === 'feeder').length})</Button>
         </Link>
         <Link to="/products/water-dispensers">
-          <Button variant="outline" size="sm">寵物飲水機 ({WATER_DISPENSERS.length})</Button>
+          <Button variant="outline" size="sm">寵物飲水機 ({dynamicProducts.filter(p => p.category === 'water').length})</Button>
         </Link>
         <Link to="/products/accessories">
           <Button variant="outline" size="sm">耗材配件</Button>
