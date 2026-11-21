@@ -27,7 +27,6 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
   const {
     items,
     cartCount,
-    cartTotal,
     freeShippingProgress,
     updateQuantity,
     removeItem,
