@@ -21,7 +21,7 @@ import { ADMIN_PAGE_PERMISSION, hasAdminPermission, ROLE_LABELS, type AdminRole 
 
 const navItems = [
   { to: "/admin", label: "儀表板", icon: LayoutDashboard, exact: true },
-  { to: "/admin/products", label: "商品與價格管理", icon: Package },
+  { to: "/admin/products", label: "商品上架與價格", icon: Package },
   { to: "/admin/orders", label: "訂單管理", icon: ShoppingCart },
   { to: "/admin/payments", label: "付款管理", icon: CreditCard },
   { to: "/admin/inventory", label: "庫存管理", icon: Package },
@@ -116,7 +116,7 @@ export default function AdminLayout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         {/* Mobile header */}
         <div className="flex h-14 items-center gap-3 border-b border-border bg-card px-4 md:hidden">
           <button onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></button>
