@@ -1,3 +1,4 @@
+import {useProductPricing} from '@/context/ProductPricingContext';
 import { useState, useEffect, useCallback } from "react";
 import type {
   CMSProduct,
@@ -110,7 +111,7 @@ const FALLBACK_PRODUCTS: Record<string, CMSProduct> = {
     faq_items: [{ question: "可以餵濕糧嗎？", answer: { text: "可以，M81 專為鮮食設計，配有冷藏保鮮功能。" } }],
     how_to_steps: null, meta_title: null, meta_description: null,
     created_at: "2025-01-01", updated_at: "2025-01-01",
-    price: 499000, compare_at_price: 599000, currency: "TWD",
+    price: 488000, compare_at_price: 648000, currency: "TWD",
     stock_quantity: 15, stock_status: "in_stock", commerce_active: true,
     preorder: false, preorder_message: null, shipping_class: null,
   },
@@ -126,7 +127,7 @@ const FALLBACK_PRODUCTS: Record<string, CMSProduct> = {
     specs: [{ label: "容量", value: "4L" }, { label: "電源", value: "USB-C / 電池雙供電" }, { label: "連線", value: "雙頻WiFi" }, { label: "攝影機", value: "全景可視" }, { label: "重量", value: "1.8kg" }],
     faq_items: null, how_to_steps: null, meta_title: null, meta_description: null,
     created_at: "2025-01-01", updated_at: "2025-01-01",
-    price: 349000, compare_at_price: 429000, currency: "TWD",
+    price: 368000, compare_at_price: 488000, currency: "TWD",
     stock_quantity: 8, stock_status: "low_stock", commerce_active: true,
     preorder: false, preorder_message: null, shipping_class: null,
   },
@@ -142,7 +143,7 @@ const FALLBACK_PRODUCTS: Record<string, CMSProduct> = {
     specs: [{ label: "容量", value: "3L" }, { label: "電源", value: "USB-C / 電池雙供電" }, { label: "連線", value: "WiFi 2.4GHz" }, { label: "重量", value: "1.5kg" }],
     faq_items: null, how_to_steps: null, meta_title: null, meta_description: null,
     created_at: "2025-01-01", updated_at: "2025-01-01",
-    price: 289000, compare_at_price: 349000, currency: "TWD",
+    price: 218000, compare_at_price: 318000, currency: "TWD",
     stock_quantity: 20, stock_status: "in_stock", commerce_active: true,
     preorder: false, preorder_message: null, shipping_class: null,
   },
@@ -159,7 +160,7 @@ const FALLBACK_PRODUCTS: Record<string, CMSProduct> = {
     faq_items: [{ question: "濾芯多久換一次？", answer: { text: "建議每 4-6 週更換一次。" } }],
     how_to_steps: null, meta_title: null, meta_description: null,
     created_at: "2025-01-01", updated_at: "2025-01-01",
-    price: 249000, compare_at_price: 299000, currency: "TWD",
+    price: 178000, compare_at_price: 258000, currency: "TWD",
     stock_quantity: 30, stock_status: "in_stock", commerce_active: true,
     preorder: false, preorder_message: null, shipping_class: null,
   },
@@ -175,7 +176,7 @@ const FALLBACK_PRODUCTS: Record<string, CMSProduct> = {
     specs: [{ label: "容量", value: "4L" }, { label: "電源", value: "USB-C / 無線電池" }, { label: "續航", value: "47天" }, { label: "材質", value: "食品級304不鏽鋼" }, { label: "重量", value: "1.5kg" }],
     faq_items: null, how_to_steps: null, meta_title: null, meta_description: null,
     created_at: "2025-01-01", updated_at: "2025-01-01",
-    price: 329000, compare_at_price: 389000, currency: "TWD",
+    price: 248000, compare_at_price: 358000, currency: "TWD",
     stock_quantity: 12, stock_status: "in_stock", commerce_active: true,
     preorder: false, preorder_message: null, shipping_class: null,
   },
@@ -188,25 +189,26 @@ function computeProductFields(p: CMSProduct): CMSProduct {
 
 /** Fetch single product by slug with LIVE commerce data + fallback */
 export function useProduct(slug: string) {
-  const apiResult = useAPI<CMSProduct>(
+ const {priceFor,originalFor}=useProductPricing();
+  const apiResult = useAPI<CMSProduct | null>(
     async () => {
       const res = await apiGet<APIResponse<CMSProduct>>(`/products/detail?slug=${encodeURIComponent(slug)}`);
-      if (!res.data) throw new Error("Product not found");
-      return computeProductFields(res.data);
+      return res.data ? computeProductFields(res.data) : null;
     },
     [slug]
   );
 
   // Return fallback product when API fails
-  if ((apiResult.error || !apiResult.data) && FALLBACK_PRODUCTS[slug]) {
-    return { ...apiResult, data: FALLBACK_PRODUCTS[slug], error: null, isLoading: false };
+  if (import.meta.env.DEV && apiResult.error && FALLBACK_PRODUCTS[slug]) {
+    return { ...apiResult, data: {...FALLBACK_PRODUCTS[slug],price:priceFor(slug,FALLBACK_PRODUCTS[slug].price),compare_at_price:originalFor(slug,FALLBACK_PRODUCTS[slug].compare_at_price||FALLBACK_PRODUCTS[slug].price)}, error: null, isLoading: false };
   }
-  return apiResult;
+  return {...apiResult,data:apiResult.data?.slug===slug?{...apiResult.data,price:priceFor(slug,apiResult.data.price),compare_at_price:originalFor(slug,apiResult.data.compare_at_price||apiResult.data.price)}:null};
 }
 
 /** Fetch all published products with LIVE commerce data */
 export function useProducts(category?: string) {
-  return useAPIList<CMSProduct>(
+  const {priceFor,originalFor}=useProductPricing();
+  const result=useAPIList<CMSProduct>(
     async () => {
       const catParam = category ? `&category=${encodeURIComponent(category)}` : "";
       const res = await apiGet<APIResponse<CMSProduct[]>>(`/products?limit=50${catParam}`);
@@ -214,17 +216,20 @@ export function useProducts(category?: string) {
     },
     [category]
   );
+  return {...result,data:result.data.map(p=>({...p,price:priceFor(p.slug,p.price),compare_at_price:originalFor(p.slug,p.compare_at_price||p.price)}))};
 }
 
 /** Fetch bestseller products */
 export function useBestsellers(limit = 4) {
-  return useAPIList<CMSProduct>(
+  const {priceFor,originalFor}=useProductPricing();
+  const result=useAPIList<CMSProduct>(
     async () => {
       const res = await apiGet<APIResponse<CMSProduct[]>>(`/products/bestsellers?limit=${limit}`);
       return (res.data || []).map(computeProductFields);
     },
     [limit]
   );
+  return {...result,data:result.data.map(p=>({...p,price:priceFor(p.slug,p.price),compare_at_price:originalFor(p.slug,p.compare_at_price||p.price)}))};
 }
 
 /** Fetch newest products */

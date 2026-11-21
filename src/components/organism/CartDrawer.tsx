@@ -168,7 +168,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                           </Text>
                         )}
                         <Text variant="body" weight="bold" className="mt-0.5 text-primary">
-                          NT${(item.price / 100).toLocaleString()}
+                          NT${item.price.toLocaleString()}
                         </Text>
                       </div>
 

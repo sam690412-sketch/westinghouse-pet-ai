@@ -1,8 +1,9 @@
-import { Routes, Route } from "react-router";
+import { Routes, Route, useLocation } from "react-router";
 import { Header } from "@/components/organism/Header";
 import { Footer } from "@/components/organism/Footer";
 import { CartDrawer } from "@/components/organism/CartDrawer";
 import { CartProvider } from "@/hooks/useCart";
+import { ProductPricingProvider } from "@/context/ProductPricingContext";
 import { Safe } from "@/components/SafeComponent";
 import { ErrorOverlay, initErrorMonitoring } from "@/components/ErrorOverlay";
 import { HealthCheck } from "@/components/HealthCheck";
@@ -33,17 +34,23 @@ import TrustPage from "./pages/TrustPage";
 import FAQPage from "./pages/FAQPage";
 import ContactPage from "./pages/ContactPage";
 import AiKnowledgePage from "./pages/admin/AiKnowledgePage";
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminProducts from "./pages/admin/AdminProducts";
+import AdminApprovals from "./pages/admin/AdminApprovals";
+import AdminUsers from "./pages/admin/AdminUsers";
 
 export default function App() {
   return (
-    <CartProvider>
+    <ProductPricingProvider><CartProvider>
       <AppInner />
-    </CartProvider>
+    </CartProvider></ProductPricingProvider>
   );
 }
 
 function AppInner() {
   const [cartOpen, setCartOpen] = useState(false);
+  const { pathname } = useLocation();
+  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
 
   useEffect(() => {
     logDiagnostics();
@@ -52,12 +59,12 @@ function AppInner() {
 
   return (
     <>
-      <Safe name="Header">
+      {!isAdmin && <Safe name="Header">
         <Header onCartClick={() => setCartOpen(true)} onSearch={() => {}} />
-      </Safe>
+      </Safe>}
 
-      <div className="pt-[60px]">
-        <DegradedBanner />
+      <div className={isAdmin ? undefined : "pt-[60px]"}>
+        {!isAdmin && <DegradedBanner />}
         <LinkInterceptor>
         <Routes>
           {/* Home */}
@@ -99,22 +106,26 @@ function AppInner() {
           <Route path="/order-success" element={<Safe name="OrderSuccess"><OrderSuccess /></Safe>} />
 
           {/* ===== ADMIN ===== */}
-          <Route path="/admin/ai-knowledge" element={<Safe name="AIKnowledge"><AiKnowledgePage /></Safe>} />
 
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="ai-knowledge" element={<AiKnowledgePage />} />
+            <Route path="products" element={<AdminProducts />} />
+            <Route path="approvals" element={<AdminApprovals />} />
+            <Route path="users" element={<AdminUsers />} />
+          </Route>
           {/* 404 fallback */}
           <Route path="*" element={<Safe name="NotFound"><NotFound /></Safe>} />
         </Routes>
         </LinkInterceptor>
       </div>
 
-      <Safe name="Footer"><Footer /></Safe>
-
-      <Safe name="CartDrawer">
-        <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
-      </Safe>
-
-      {/* AI Customer Service — floating chat */}
-      <AiChatWidget />
+      {!isAdmin && <>
+        <Safe name="Footer"><Footer /></Safe>
+        <Safe name="CartDrawer">
+          <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+        </Safe>
+        <AiChatWidget />
+      </>}
 
       <ErrorOverlay />
       {features.dev && <HealthCheck compact />}

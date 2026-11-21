@@ -1,12 +1,14 @@
+import {useProductPricing} from '@/context/ProductPricingContext';
 import { Link } from "react-router";
 import { PageLayout } from "@/components/PageLayout";
-import { WATER_DISPENSERS } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowRight, Check, Droplets } from "lucide-react";
 
 export default function WaterDispenserCategoryPage() {
+ const {products:dynamicProducts}=useProductPricing();
+ const dynamicList=dynamicProducts.filter(p=>p.category==='water');
   return (
     <PageLayout
       title="寵物飲水機"
@@ -26,7 +28,7 @@ export default function WaterDispenserCategoryPage() {
 
       {/* Product Cards */}
       <div className="grid gap-6 sm:grid-cols-2 mb-10">
-        {WATER_DISPENSERS.map((p) => (
+        {dynamicList.map((p) => (
           <Link key={p.slug} to={`/products/${p.slug}`} className="group rounded-xl border border-border bg-card p-4 transition-all hover:shadow-lg hover:border-primary/30">
             <div className="relative aspect-[16/10] overflow-hidden rounded-lg bg-muted mb-3">
               <img src={p.image} alt={p.name} className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105" />
@@ -54,7 +56,7 @@ export default function WaterDispenserCategoryPage() {
           <TableHeader>
             <TableRow>
               <TableHead>功能</TableHead>
-              {WATER_DISPENSERS.map((p) => (
+              {dynamicList.map((p) => (
                 <TableHead key={p.slug} className="text-center">{p.name.split(" ")[0]}</TableHead>
               ))}
             </TableRow>
@@ -63,7 +65,7 @@ export default function WaterDispenserCategoryPage() {
             {["超靜音設計","四重過濾","不鏽鋼材質","水質監測","大容量"].map((feature) => (
               <TableRow key={feature}>
                 <TableCell className="font-medium">{feature}</TableCell>
-                {WATER_DISPENSERS.map((p) => {
+                {dynamicList.map((p) => {
                   const hasFeature = p.features.some((f) => f.includes(feature.substring(0, 2)) || (feature === "不鏽鋼材質" && f.includes("不鏽鋼")) || (feature === "大容量" && f.includes("容量")));
                   return <TableCell key={p.slug} className="text-center">{hasFeature ? <Check className="h-4 w-4 text-emerald-500 mx-auto" /> : "—"}</TableCell>;
                 })}
@@ -71,7 +73,7 @@ export default function WaterDispenserCategoryPage() {
             ))}
             <TableRow>
               <TableCell className="font-medium">價格</TableCell>
-              {WATER_DISPENSERS.map((p) => (
+              {dynamicList.map((p) => (
                 <TableCell key={p.slug} className="text-center font-bold text-primary">NT${(p.price / 100).toLocaleString()}</TableCell>
               ))}
             </TableRow>

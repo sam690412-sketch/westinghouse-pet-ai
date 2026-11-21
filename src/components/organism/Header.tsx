@@ -1,14 +1,15 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Link } from "react-router";
 import {
   Menu, X, ShoppingCart, Search, User, ChevronDown, ChevronRight,
-  PawPrint, Heart,
+  PawPrint, Heart, Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/useCart";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   NavigationMenu, NavigationMenuContent,
   NavigationMenuItem, NavigationMenuList,
@@ -108,6 +109,78 @@ const defaultNavItems: NavItem[] = [
 /*  COMPONENT                                                         */
 /* ================================================================ */
 
+interface InstallPromptEvent extends Event {
+  prompt(): Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
+function InstallAppButton() {
+  const installPrompt = useRef<InstallPromptEvent | null>(null);
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [installed, setInstalled] = useState(() => {
+    const iosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone;
+    return !!iosStandalone || window.matchMedia("(display-mode: standalone)").matches;
+  });
+
+  useEffect(() => {
+    function saveInstallPrompt(event: Event) {
+      event.preventDefault();
+      installPrompt.current = event as InstallPromptEvent;
+    }
+
+    function markInstalled() {
+      installPrompt.current = null;
+      setInstalled(true);
+      setInstructionsOpen(false);
+    }
+
+    window.addEventListener("beforeinstallprompt", saveInstallPrompt);
+    window.addEventListener("appinstalled", markInstalled);
+
+    if (import.meta.env.PROD && "serviceWorker" in navigator) {
+      void navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", saveInstallPrompt);
+      window.removeEventListener("appinstalled", markInstalled);
+    };
+  }, []);
+
+  async function openInstall(event: React.MouseEvent<HTMLButtonElement>) {
+    const prompt = installPrompt.current;
+    if (!prompt) return;
+    event.preventDefault();
+    installPrompt.current = null;
+    try {
+      await prompt.prompt();
+    } catch {
+      setInstructionsOpen(true);
+    }
+  }
+
+  if (installed) return null;
+
+  return (
+    <Dialog open={instructionsOpen} onOpenChange={setInstructionsOpen}>
+      <DialogTrigger asChild>
+        <Button type="button" variant="outline" size="sm" onClick={(event) => void openInstall(event)} className="gap-1 px-2 text-xs sm:gap-1.5 sm:px-3 sm:text-sm">
+          <Smartphone className="h-4 w-4" aria-hidden="true" />
+          安裝 App
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="z-[80]">
+        <DialogTitle>安裝西屋寵物 App</DialogTitle>
+        <DialogDescription>將西屋寵物加入主畫面，下次可直接點圖示開啟。</DialogDescription>
+        <ul className="space-y-3 text-sm">
+          <li><strong>iPhone／iPad Safari</strong><br />點選「分享」，選「加入主畫面」，開啟「以網頁 App 打開」（若有顯示），再點「加入」。</li>
+          <li><strong>Android Chrome</strong><br />打開右上方 ⋮，選「安裝應用程式」或「加到主畫面」。</li>
+          <li><strong>電腦 Chrome／Edge</strong><br />使用網址列右側的安裝圖示，也可從瀏覽器選單尋找安裝選項。</li>
+        </ul>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function Header({
   logoText = "Westinghouse Pet", wishlistCount = 0,
   isAuthenticated = false, userName,
@@ -180,6 +253,7 @@ export function Header({
 
         {/* Right Actions */}
         <div className="flex items-center gap-1 sm:gap-2">
+          <InstallAppButton />
           <form onSubmit={handleSearchSubmit} className={cn("flex items-center overflow-hidden transition-all duration-300", searchOpen ? "w-48 opacity-100 sm:w-64" : "w-0 opacity-0")}>
             <Input type="text" placeholder="搜尋商品..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-9 text-sm" aria-label="搜尋商品" />
           </form>

@@ -14,6 +14,7 @@ const { Client } = require("pg");
 const { URL } = require("url");
 const paymentService = require("./payment-service.cjs");
 const aiService = require("./ai-service.cjs");
+const { MARKET_PRICE_JOIN, prepareRenderQaCatalog } = require("./qa-product-schema.cjs");
 
 /* ================================================================ */
 /*  CONFIGURATION                                                     */
@@ -21,7 +22,7 @@ const aiService = require("./ai-service.cjs");
 
 const PORT = process.env.API_PORT || 3002;
 const DATABASE_URI = process.env.DATABASE_URI || "";
-const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
+const rbac = require("./admin-rbac.cjs");
 
 // CORS allowlist — production domains
 const CORS_ALLOWLIST = (process.env.CORS_ALLOWLIST || "")
@@ -34,7 +35,7 @@ const corsOrigin = CORS_ALLOWLIST.length > 0 ? null : "*";
 
 const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Admin-Secret",
+  "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Max-Age": "86400",
   "Content-Type": "application/json; charset=utf-8",
 };
@@ -42,9 +43,6 @@ const corsHeaders = {
 // Request size limits
 const MAX_BODY_SIZE = 256 * 1024; // 256KB
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB
-
-// Admin secret minimum length
-const ADMIN_SECRET_MIN_LENGTH = 16;
 
 function sendJSON(res, status, data) {
   res.writeHead(status, corsHeaders);
@@ -162,83 +160,28 @@ function serveStaticFile(res, pathname) {
 /*  ADMIN AUTH (hardened)                                             */
 /* ================================================================ */
 
-// Validate admin secret strength on startup
-function validateAdminSecret() {
-  if (!ADMIN_SECRET) {
-    console.warn("[SECURITY] ADMIN_SECRET not set — admin endpoints disabled");
-    return false;
-  }
-  if (ADMIN_SECRET.length < ADMIN_SECRET_MIN_LENGTH) {
-    console.error(`[SECURITY] ADMIN_SECRET too short (min ${ADMIN_SECRET_MIN_LENGTH} chars) — admin endpoints disabled`);
-    return false;
-  }
-  // Reject common weak secrets
-  const weakPatterns = ["admin", "password", "123456", "secret", "default"];
-  const lower = ADMIN_SECRET.toLowerCase();
-  for (const pattern of weakPatterns) {
-    if (lower.includes(pattern)) {
-      console.error(`[SECURITY] ADMIN_SECRET contains weak pattern '${pattern}' — admin endpoints disabled`);
-      return false;
-    }
-  }
-  return true;
-}
-const ADMIN_ENABLED = validateAdminSecret();
-
-const adminFailLog = new Map(); // ip -> { count, resetAt }
-const ADMIN_FAIL_WINDOW = 5 * 60 * 1000; // 5 minutes
-const ADMIN_FAIL_MAX = 5; // max failed attempts before lockout
-
-function requireAdmin(req) {
-  if (!ADMIN_ENABLED) return { error: "Admin access not configured", status: 503 };
-
-  const ip = req.socket.remoteAddress || "unknown";
-  const secret = req.headers["x-admin-secret"] || "";
-
-  // Check fail lockout
-  const failEntry = adminFailLog.get(ip);
-  if (failEntry && Date.now() < failEntry.resetAt && failEntry.count >= ADMIN_FAIL_MAX) {
-    return { error: "Too many failed attempts — try again later", status: 429 };
-  }
-
-  if (secret !== ADMIN_SECRET) {
-    // Log failed attempt
-    const now = Date.now();
-    if (!failEntry || now > failEntry.resetAt) {
-      adminFailLog.set(ip, { count: 1, resetAt: now + ADMIN_FAIL_WINDOW });
-    } else {
-      failEntry.count++;
-    }
-    // Audit log (fire and forget)
-    queryDB("SELECT public.log_audit($1, $2, $3, $4, $5)", [
-      "admin_auth_failed", null, null, null,
-      JSON.stringify({ ip, userAgent: req.headers["user-agent"]?.slice(0, 200), timestamp: new Date().toISOString() }),
-    ]).catch(() => {});
-    return { error: "Unauthorized", status: 401 };
-  }
-
-  // Clear fail count on success
-  adminFailLog.delete(ip);
-  return null; // OK
-}
+// Legacy shared-secret authentication is disabled. All admin routes are
+// handled by the signed-cookie RBAC router before legacy dispatch.
+function requireAdmin() { return {error:'Legacy admin API disabled',status:403}; }
 
 /* ================================================================ */
 /*  RATE LIMITING                                                     */
 /* ================================================================ */
 
-const rateLimits = new Map(); // ip -> { count, resetAt }
+const rateLimits = new Map(); // request scope and IP -> { count, resetAt }
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 60; // requests per window (public)
 const RATE_LIMIT_ADMIN_MAX = 30; // requests per window (admin)
 
-function checkRateLimit(ip, isAdmin = false) {
+function checkRateLimit(ip, scope) {
+  const key = `${scope}:${ip}`;
   const now = Date.now();
-  const entry = rateLimits.get(ip);
+  const entry = rateLimits.get(key);
   if (!entry || now > entry.resetAt) {
-    rateLimits.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    rateLimits.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
     return { ok: true };
   }
-  const max = isAdmin ? RATE_LIMIT_ADMIN_MAX : RATE_LIMIT_MAX;
+  const max = scope === "admin" ? RATE_LIMIT_ADMIN_MAX : RATE_LIMIT_MAX;
   if (entry.count >= max) {
     return { ok: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
   }
@@ -249,8 +192,8 @@ function checkRateLimit(ip, isAdmin = false) {
 // Clean up expired entries every 10 minutes
 setInterval(() => {
   const now = Date.now();
-  for (const [ip, entry] of rateLimits) {
-    if (now > entry.resetAt) rateLimits.delete(ip);
+  for (const [key, entry] of rateLimits) {
+    if (now > entry.resetAt) rateLimits.delete(key);
   }
 }, 10 * 60 * 1000);
 
@@ -293,7 +236,7 @@ function isValidSku(sku) {
 async function queryDB(sql, params = []) {
   const client = new Client({
     connectionString: DATABASE_URI,
-    ssl: { rejectUnauthorized: false },
+    ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
     connectionTimeoutMillis: 10000,
     query_timeout: 15000,
   });
@@ -314,18 +257,25 @@ const PRODUCT_SELECT = `
   SELECT pc.slug, pc.sku, pc.name, pc.tagline, pc.short_description,
     pc.category, pc.solutions, pc.hero_image_url, pc.images, pc.features,
     pc.specs, pc.faq_items, pc.how_to_steps, pc.meta_title, pc.meta_description,
-    pc.created_at, pc.updated_at, cp.price, cp.compare_at_price, cp.currency,
+    pc.created_at, pc.updated_at,
+    COALESCE(pp.promo_twd, cp.price) * 100 AS price,
+    COALESCE(pp.msrp_twd, cp.compare_at_price) * 100 AS compare_at_price, cp.currency,
     cp.stock_quantity, cp.stock_status, cp.is_active as commerce_active,
     cp.preorder, cp.preorder_message, cp.shipping_class
   FROM product_contents pc
-  INNER JOIN commerce_products cp ON pc.id = cp.product_content_id
+  INNER JOIN commerce_products cp ON pc.id = cp.product_content_id AND pc.sku = cp.sku
+  ${MARKET_PRICE_JOIN}
   WHERE pc.deleted_at IS NULL AND cp.is_active = true
 `;
 const PRODUCT_ORDER = `ORDER BY cp.created_at DESC`;
 
 async function getCommerceProduct(sku) {
   const r = await queryDB(
-    "SELECT price, compare_at_price, stock_quantity, stock_status, is_active, preorder FROM commerce_products WHERE sku = $1",
+    `SELECT COALESCE(pp.promo_twd, cp.price) AS price, cp.stock_quantity, cp.stock_status, cp.is_active
+     FROM commerce_products cp
+     JOIN product_contents pc ON pc.id = cp.product_content_id AND pc.sku = cp.sku
+     ${MARKET_PRICE_JOIN}
+     WHERE cp.sku = $1 AND pc.deleted_at IS NULL`,
     [sku]
   );
   return r.rows[0] || null;
@@ -336,15 +286,19 @@ async function enrichCartItems(items) {
   const skus = items.map((i) => i.sku || i.product_sku);
   const placeholders = skus.map((_, i) => `$${i + 1}`).join(",");
   const result = await queryDB(
-    `SELECT pc.slug, pc.sku, pc.name, pc.tagline, pc.hero_image_url, cp.price, cp.compare_at_price, cp.stock_status, cp.stock_quantity, cp.currency, cp.preorder
-     FROM product_contents pc INNER JOIN commerce_products cp ON pc.id = cp.product_content_id
+    `SELECT pc.slug, pc.sku, pc.name, pc.tagline, pc.hero_image_url,
+       COALESCE(pp.promo_twd, cp.price) AS price, COALESCE(pp.msrp_twd, cp.compare_at_price) AS compare_at_price,
+       cp.stock_status, cp.stock_quantity
+     FROM product_contents pc INNER JOIN commerce_products cp ON pc.id = cp.product_content_id AND pc.sku = cp.sku
+     ${MARKET_PRICE_JOIN}
      WHERE pc.deleted_at IS NULL AND cp.is_active = true AND cp.sku IN (${placeholders})`,
     skus
   );
   const productMap = new Map(result.rows.map((r) => [r.sku, r]));
-  return items.map((item) => {
+  return items.flatMap((item) => {
     const sku = item.sku || item.product_sku;
     const product = productMap.get(sku);
+    if (!product) return [];
     const qty = item.quantity || item.qty || 1;
     const price = product?.price || 0;
     return {
@@ -425,10 +379,30 @@ const routes = {
     return { data: result.rows };
   },
 
+  // Prelaunch reservation: server-side validation + durable database write.
+  "/api/early-bird-reservations": async (_sp, body) => {
+    const {name,email,contact,region,locale,items}=body||{};
+    const clean=(v,max)=>typeof v==='string'?v.trim().slice(0,max):'';
+    const n=clean(name,120), e=clean(email,200), c=clean(contact,200), r=clean(region,120);
+    if(!n||!c||!r||!/^\S+@\S+\.\S+$/.test(e)) return {error:'Invalid contact information'};
+    if(!['zh-TW','en','th'].includes(locale)) return {error:'Invalid locale'};
+    if(!Array.isArray(items)||items.length<1||items.length>15) return {error:'Invalid items'};
+    const known=['m81-fresh-food-feeder','m12-panoramic-feeder','m31-gashapon-feeder','d11ba-water-dispenser','d61-stainless-dispenser'];
+    if(items.some(i=>!known.includes(i?.sku)||!Number.isInteger(i?.quantity)||i.quantity<1||i.quantity>99))return {error:'Invalid product or quantity'};
+    if(!DATABASE_URI)return {error:'Reservation storage not configured'};
+    await queryDB('INSERT INTO early_bird_reservations (name,email,contact,region,locale,items) VALUES ($1,$2,$3,$4,$5,$6::jsonb)',[n,e,c,r,locale,JSON.stringify(items)]);
+    return {ok:true};
+  },
+
   // Cart
   "/api/cart/validate": async (_sp, body) => {
     const items = body.items;
-    if (!Array.isArray(items)) return { error: "items array required" };
+    if (!Array.isArray(items) || items.length > 100 ||
+        items.some(item => !isValidSku(item?.sku || item?.product_sku || "") ||
+          !Number.isSafeInteger(item.quantity ?? item.qty) ||
+          (item.quantity ?? item.qty) < 1 || (item.quantity ?? item.qty) > 99)) {
+      return { error: "購物車商品或數量不正確" };
+    }
     const enriched = await enrichCartItems(items);
     const total = enriched.reduce((s, i) => s + i.subtotal, 0);
     return { data: enriched, total };
@@ -437,7 +411,7 @@ const routes = {
   "/api/cart/add": async (_sp, body) => {
     const { sku, quantity = 1 } = body;
     if (!sku) return { error: "sku required" };
-    if (quantity < 1) return { error: "quantity must be >= 1" };
+    if (!Number.isSafeInteger(quantity) || quantity < 1) return { error: "quantity must be a positive integer" };
     const product = await getCommerceProduct(sku);
     if (!product) return { error: "商品不存在" };
     if (!product.is_active) return { error: "商品已下架" };
@@ -445,6 +419,7 @@ const routes = {
     if (quantity > product.stock_quantity) return { error: `庫存不足，僅剩 ${product.stock_quantity} 件` };
     if (quantity > 99) return { error: "最多 99 件" };
     const enriched = await enrichCartItems([{ sku, quantity }]);
+    if (!enriched.length) return { error: "商品已下架" };
     return { data: enriched[0] };
   },
 
@@ -1426,7 +1401,8 @@ const server = http.createServer(async (req, res) => {
 
   // 5. Rate limiting
   const isAdminPath = pathname.startsWith("/api/admin/");
-  const rateLimit = checkRateLimit(ip, isAdminPath);
+  const rateScope = isAdminPath ? "admin" : pathname.startsWith("/api/") ? "api" : "static";
+  const rateLimit = checkRateLimit(ip, rateScope);
   if (!rateLimit.ok) {
     res.writeHead(429, { ...responseHeaders, "Retry-After": String(rateLimit.retryAfter) });
     res.end(JSON.stringify({ error: "Rate limit exceeded" }));
@@ -1440,11 +1416,28 @@ const server = http.createServer(async (req, res) => {
     // If serveStaticFile somehow falls through, continue to API 404
   }
 
+  // Prelaunch server gate: never accept payment/order creation until explicitly enabled.
+  if (process.env.IS_LIVE_STORE !== 'true' && ['/api/orders/create','/api/payments/create','/api/payments/mock'].includes(pathname)) {
+    sendJSON(res, 403, {error:'Checkout is disabled during prelaunch'}); return;
+  }
+
+  // 6. Secure RBAC router (must run before any legacy admin handler).
+  if (pathname.startsWith('/api/admin/') || (pathname==='/api/products/prices' && req.method==='GET')) {
+    let secureBody={};
+    if (['POST','PATCH'].includes(req.method)) { try { secureBody=await parseBody(req); } catch { sendJSON(res,400,{error:'Invalid JSON'});return; } }
+    const answer=await rbac.handle(req,pathname,secureBody);
+    if (answer) { res.writeHead(answer.status,{'Content-Type':'application/json; charset=utf-8',...responseHeaders,...answer.headers});res.end(JSON.stringify(answer.data));return; }
+  }
+
+  // Legacy admin handlers must NEVER be reached. RBAC owns all admin routes.
+  if (pathname.startsWith('/api/admin/')) { sendJSON(res,404,{error:'Admin route unavailable'}); return; }
+
   // 6. Route lookup
   let handler = routes[pathname];
 
   if (!handler && req.method === "POST") {
-    if (pathname === "/api/cart/validate") handler = routes["/api/cart/validate"];
+    if (pathname === "/api/early-bird-reservations") handler = routes["/api/early-bird-reservations"];
+    else if (pathname === "/api/cart/validate") handler = routes["/api/cart/validate"];
     else if (pathname === "/api/cart/add") handler = routes["/api/cart/add"];
     else if (pathname === "/api/orders/create") handler = routes["/api/orders/create"];
     else if (pathname === "/api/payments/create") handler = routes["/api/payments/create"];
@@ -1509,7 +1502,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+prepareRenderQaCatalog().then(() => rbac.setup()).then(()=>server.listen(PORT, () => {
   console.log(`\n=== API Server running on http://localhost:${PORT} ===`);
   console.log("Endpoints:");
   console.log(`  GET  /api/health`);
@@ -1529,6 +1522,6 @@ server.listen(PORT, () => {
   console.log(`  GET  /api/payments/newebpay/return  — Return URL`);
   console.log(`  POST /api/payments/mock             — Simulate payment (dev)`);
   console.log("============================================\n");
-});
+})).catch(err=>{console.error("SECURE STARTUP FAILED:",err.message);process.exitCode=1});
 
 process.on("SIGINT", () => { console.log("\nShutting down..."); server.close(() => process.exit(0)); });

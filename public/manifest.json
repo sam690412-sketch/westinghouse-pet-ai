@@ -1,0 +1,16 @@
+{
+  "id": "/",
+  "name": "西屋寵物用品｜Westinghouse Pet Taiwan",
+  "short_name": "西屋寵物",
+  "lang": "zh-TW",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#0047AB",
+  "background_color": "#FFFFFF",
+  "icons": [
+    { "src": "/pet-app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pet-app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pet-app-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
