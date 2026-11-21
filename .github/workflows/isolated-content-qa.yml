@@ -1,0 +1,112 @@
+name: Isolated content QA
+on:
+  push:
+    branches: [qa/v3-content-compat]
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    container: node:22-bookworm
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: westinghouse_qa
+          POSTGRES_USER: qa
+          POSTGRES_PASSWORD: ephemeral-runner-only
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URI: postgresql://qa:ephemeral-runner-only@postgres:5432/westinghouse_qa
+      PGSSLMODE: disable
+      API_PORT: 55385
+      IS_LIVE_STORE: 'false'
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci --include=dev && npm run build
+      - name: Check migration, catalog, payment guard and mobile checkout
+        shell: bash
+        run: |
+          npm install --prefix /tmp/browser-qa playwright
+          /tmp/browser-qa/node_modules/.bin/playwright install --with-deps chromium
+          export ADMIN_SESSION_SIGNING_KEY="$(node -p 'require("crypto").randomBytes(40).toString("hex")')"
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const { readFileSync } = require('node:fs');
+          const { spawn } = require('node:child_process');
+          const { Client } = require('pg');
+          const { chromium } = require('/tmp/browser-qa/node_modules/playwright');
+          const { repairCatalog } = require('./qa-product-schema.cjs');
+          const base = 'http://127.0.0.1:55385';
+          const routes = ['/solutions', '/learn-articles', '/reviews'];
+          const migration = readFileSync('migrations/20261121_content_compatibility.sql', 'utf8');
+          async function req(route, status = 200, body) {
+            const response = await fetch(base + '/api' + route, body === undefined ? {} : {
+              method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
+            });
+            assert.equal(response.status, status, route);
+            return response.json();
+          }
+          async function main() {
+            assert.equal(new URL(process.env.DATABASE_URI).hostname, 'postgres');
+            assert.equal(process.env.IS_LIVE_STORE, 'false');
+            const db = new Client({connectionString:process.env.DATABASE_URI, ssl:false});
+            await db.connect();
+            let server, browser;
+            try {
+              await repairCatalog(db, () => {});
+              server = spawn(process.execPath, ['api-server.cjs'], {stdio:['ignore','pipe','ignore']});
+              await new Promise((resolve,reject) => {
+                const timeout = setTimeout(() => reject(Error('API did not start')), 15000);
+                server.stdout.on('data', chunk => {if (chunk.includes('API Server running')) {clearTimeout(timeout); resolve();}});
+                server.once('exit', code => {clearTimeout(timeout); reject(Error('API exited ' + code));});
+              });
+              for (const route of routes) await req(route, 500);
+              await db.query(migration.replace(/COMMIT;\s*$/, 'ROLLBACK;'));
+              for (const route of routes) await req(route, 500);
+              await db.query(migration);
+              for (const route of routes) assert.deepEqual((await req(route)).data, []);
+              await db.query("INSERT INTO learn_articles (slug,title,category,is_published,deleted_at) VALUES ('qa-public','QA public','feeding',true,null),('qa-draft','QA draft','feeding',false,null),('qa-deleted','QA deleted','feeding',true,now())");
+              await db.query("INSERT INTO reviews (rating,content,is_published) VALUES (5,'QA public',true),(4,'QA draft',false)");
+              await db.query(migration);
+              assert.deepEqual((await req('/learn-articles')).data.map(a => a.slug), ['qa-public']);
+              assert.deepEqual((await req('/reviews')).data.map(r => r.content), ['QA public']);
+              console.log('PASS content SQL: 500 reproduced, rollback checked, 200 after apply, draft/deleted excluded');
+              await db.query("UPDATE commerce_products SET stock_quantity=5, stock_status='in_stock', is_active=true");
+              const pricing = new Map([['WH-D11BA-TW',1780],['WH-D61-TW',2480],['WH-M12-TW',3680],['WH-M31-TW',2180],['WH-M81-TW',4880]]);
+              const products = (await req('/products')).data;
+              assert.equal(products.length, 5);
+              for (const product of products) {
+                assert.equal(product.price, 100 * pricing.get(product.sku));
+                const {data} = await req('/products/detail?slug=' + product.slug);
+                assert.equal(data.sku, product.sku);
+                assert.equal((await req('/cart/validate',200,{items:[{sku:product.sku,quantity:2}]})).total, 2 * pricing.get(product.sku));
+              }
+              await req('/admin/products',401);
+              for (const route of ['/orders/create','/payments/create','/payments/mock']) await req(route,403,{});
+              console.log('PASS APIs: five SKUs, approved prices, cart totals, anonymous admin denied, checkout/payment writes blocked');
+              browser = await chromium.launch({args:['--no-sandbox']});
+              const page = await browser.newPage({viewport:{width:390,height:844}});
+              await page.goto(base + '/#/products/' + products[0].slug);
+              await page.getByRole('button',{name:'加入購物車',exact:true}).click();
+              await page.getByRole('button',{name:'購物車',exact:true}).click();
+              const drawer = page.getByRole('dialog',{name:'購物車'});
+              await drawer.getByRole('button',{name:'增加數量'}).click();
+              await drawer.getByRole('button',{name:'減少數量'}).click();
+              await drawer.getByRole('button',{name:'前往結帳'}).click();
+              await page.getByRole('heading',{name:'結帳',exact:true}).waitFor({timeout:8000});
+              console.log('PASS mobile: 390px add, increase, decrease and open checkout without submission');
+            } finally {
+              await browser?.close();
+              server?.kill();
+              await db.end();
+            }
+          }
+          main().catch(error => {console.error(error.message); process.exitCode = 1;});
+          NODE
