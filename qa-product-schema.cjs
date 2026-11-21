@@ -96,19 +96,39 @@ async function repairCatalog(client, log = console.log) {
     await client.query(contentSeed + "ON CONFLICT DO NOTHING");
 
     for (const [sku, model, slug, stock, stockStatus] of MARKET_PRODUCTS) {
-      const result = await client.query(`
+      const asset = model.toLowerCase();
+      const cardImage = `/images/products/card/${asset}-card.webp`;
+      const oldImage = `/images/products/${asset.replace("-", "")}-hero.jpg`;
+      await client.query(`
+        UPDATE public.product_contents SET hero_image_url = $2, updated_at = now()
+        WHERE sku = $1 AND deleted_at IS NULL AND (hero_image_url IS NULL OR hero_image_url = $3)
+      `, [sku, cardImage, oldImage]);
+
+      await client.query(`
         INSERT INTO public.commerce_products
           (product_content_id, sku, price, compare_at_price, stock_quantity, stock_status)
         SELECT pc.id, pc.sku, pp.promo_twd, pp.msrp_twd, $4, $5
         FROM public.product_contents pc
         CROSS JOIN public.product_prices pp
         WHERE pc.sku = $1 AND pp.sku = $2 AND pc.slug = $3 AND pc.deleted_at IS NULL
-        ON CONFLICT (sku) DO UPDATE
-          SET price = EXCLUDED.price, compare_at_price = EXCLUDED.compare_at_price
-        WHERE commerce_products.product_content_id = EXCLUDED.product_content_id
-          AND commerce_products.currency = 'TWD' AND commerce_products.is_active
-        RETURNING sku
+        ON CONFLICT (sku) DO NOTHING
       `, [sku, model, slug, stock, stockStatus]);
+
+      await client.query(`
+        UPDATE public.commerce_products cp
+          SET price = pp.promo_twd, compare_at_price = pp.msrp_twd
+        FROM public.product_prices pp
+        WHERE cp.sku = $1 AND pp.sku = $2 AND cp.currency = 'TWD' AND cp.is_active
+          AND (cp.price, cp.compare_at_price) IS DISTINCT FROM (pp.promo_twd, pp.msrp_twd)
+      `, [sku, model]);
+
+      const result = await client.query(`
+        SELECT cp.sku FROM public.commerce_products cp
+        JOIN public.product_contents pc ON pc.id = cp.product_content_id AND pc.sku = cp.sku
+        ${MARKET_PRICE_JOIN}
+        WHERE cp.sku = $1 AND pc.slug = $2 AND pc.deleted_at IS NULL AND cp.is_active
+          AND cp.price = pp.promo_twd AND cp.compare_at_price = pp.msrp_twd
+      `, [sku, slug]);
       if (result.rowCount !== 1) throw new Error("QA catalog identity conflict");
     }
     const after = await tablePresence(client);
