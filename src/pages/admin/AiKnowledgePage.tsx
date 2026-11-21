@@ -84,7 +84,7 @@ export default function AiKnowledgePage() {
       params.set("limit", "20");
 
       const res = await fetch(`${env.API_BASE}/admin/ai/knowledge?${params.toString()}`, {
-        headers: { "X-Admin-Secret": localStorage.getItem("admin_secret") || "" },
+        headers: {  },
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -146,7 +146,7 @@ export default function AiKnowledgePage() {
         method: editingItem ? "PATCH" : "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-Admin-Secret": localStorage.getItem("admin_secret") || "",
+          
         },
         body: JSON.stringify(body),
       });
@@ -165,7 +165,7 @@ export default function AiKnowledgePage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "X-Admin-Secret": localStorage.getItem("admin_secret") || "",
+          
         },
         body: JSON.stringify({ id: item.id, enabled: !item.enabled }),
       });

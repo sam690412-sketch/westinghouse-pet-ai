@@ -3,6 +3,7 @@ import { Header } from "@/components/organism/Header";
 import { Footer } from "@/components/organism/Footer";
 import { CartDrawer } from "@/components/organism/CartDrawer";
 import { CartProvider } from "@/hooks/useCart";
+import { ProductPricingProvider } from "@/context/ProductPricingContext";
 import { Safe } from "@/components/SafeComponent";
 import { ErrorOverlay, initErrorMonitoring } from "@/components/ErrorOverlay";
 import { HealthCheck } from "@/components/HealthCheck";
@@ -33,12 +34,16 @@ import TrustPage from "./pages/TrustPage";
 import FAQPage from "./pages/FAQPage";
 import ContactPage from "./pages/ContactPage";
 import AiKnowledgePage from "./pages/admin/AiKnowledgePage";
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminProducts from "./pages/admin/AdminProducts";
+import AdminApprovals from "./pages/admin/AdminApprovals";
+import AdminUsers from "./pages/admin/AdminUsers";
 
 export default function App() {
   return (
-    <CartProvider>
+    <ProductPricingProvider><CartProvider>
       <AppInner />
-    </CartProvider>
+    </CartProvider></ProductPricingProvider>
   );
 }
 
@@ -99,8 +104,13 @@ function AppInner() {
           <Route path="/order-success" element={<Safe name="OrderSuccess"><OrderSuccess /></Safe>} />
 
           {/* ===== ADMIN ===== */}
-          <Route path="/admin/ai-knowledge" element={<Safe name="AIKnowledge"><AiKnowledgePage /></Safe>} />
 
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="ai-knowledge" element={<AiKnowledgePage />} />
+            <Route path="products" element={<AdminProducts />} />
+            <Route path="approvals" element={<AdminApprovals />} />
+            <Route path="users" element={<AdminUsers />} />
+          </Route>
           {/* 404 fallback */}
           <Route path="*" element={<Safe name="NotFound"><NotFound /></Safe>} />
         </Routes>

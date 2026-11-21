@@ -1,9 +1,11 @@
+import {useProductPricing} from '@/context/ProductPricingContext';
 import { PageLayout } from "@/components/PageLayout";
 import { Link } from "react-router";
 import { PRODUCTS, FEEDERS, WATER_DISPENSERS } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 export default function ProductsPage() {
+ const {products:dynamicProducts}=useProductPricing();
   return (
     <PageLayout
       title="全部商品"
@@ -28,7 +30,7 @@ export default function ProductsPage() {
 
       {/* Product Grid */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {PRODUCTS.map((p) => (
+        {dynamicProducts.map((p) => (
           <Link key={p.slug} to={`/products/${p.slug}`} className="group rounded-xl border border-border bg-card p-4 transition-all hover:shadow-lg hover:border-primary/30">
             <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-muted mb-3">
               <img src={p.image} alt={p.name} className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105" />

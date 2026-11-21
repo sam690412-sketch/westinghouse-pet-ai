@@ -12,68 +12,36 @@ import {
   X,
   Ticket,
   Shield,
+  Users,
+  CheckCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Heading } from "@/components/atomic/Typography";
+import { ADMIN_PAGE_PERMISSION, hasAdminPermission, ROLE_LABELS, type AdminRole } from "@/config/adminPermissions";
 
-const ADMIN_SECRET_KEY = "admin_secret";
 
 const navItems = [
   { to: "/admin", label: "儀表板", icon: LayoutDashboard, exact: true },
+  { to: "/admin/products", label: "商品與價格管理", icon: Package },
   { to: "/admin/orders", label: "訂單管理", icon: ShoppingCart },
   { to: "/admin/payments", label: "付款管理", icon: CreditCard },
   { to: "/admin/inventory", label: "庫存管理", icon: Package },
   { to: "/admin/tickets", label: "工單管理", icon: Ticket },
   { to: "/admin/warranties", label: "保固管理", icon: Shield },
   { to: "/admin/audit-log", label: "稽核記錄", icon: ClipboardList },
+  { to: "/admin/approvals", label: "待審批中心", icon: CheckCheck },
+  { to: "/admin/users", label: "人員權限", icon: Users },
+  { to: "/admin/ai-knowledge", label: "AI 知識庫", icon: ClipboardList },
 ];
 
-function AdminLogin({ onLogin }: { onLogin: (secret: string) => void }) {
-  const [secret, setSecret] = useState("");
-  const [error, setError] = useState("");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!secret.trim()) { setError("請輸入管理密鑰"); return; }
-    onLogin(secret.trim());
-  };
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-8 shadow-sm">
-        <div className="mb-6 flex items-center justify-center gap-2">
-          <ShieldCheck className="h-8 w-8 text-primary" />
-          <Heading as="h1" variant="h3">管理後台</Heading>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium">管理密鑰</label>
-            <input
-              type="password"
-              value={secret}
-              onChange={(e) => { setSecret(e.target.value); setError(""); }}
-              placeholder="輸入 ADMIN_SECRET"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-            />
-            {error && <p className="mt-1 text-xs text-error">{error}</p>}
-          </div>
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            登入
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
+function AdminLogin({onLogin}:{onLogin:()=>void}){const[email,setEmail]=useState('');const[password,setPassword]=useState('');const[error,setError]=useState('');return <form onSubmit={async e=>{e.preventDefault();try{const r=await fetch('/api/admin/login',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},body:JSON.stringify({email,password})});if(!r.ok)throw Error('登入失敗');onLogin()}catch(x){setError(String(x))}}} className="mx-auto max-w-sm mt-24 p-6 border rounded space-y-4"><h1 className="text-xl font-bold">管理員登入</h1><input aria-label="Email" type="email" required className="border p-2 w-full" value={email} onChange={e=>setEmail(e.target.value)}/><input aria-label="Password" type="password" required className="border p-2 w-full" value={password} onChange={e=>setPassword(e.target.value)}/>{error&&<p role="alert">{error}</p>}<button type="submit">登入</button></form>}
 
 export default function AdminLayout() {
-  const [secret, setSecret] = useState<string | null>(() =>
-    localStorage.getItem(ADMIN_SECRET_KEY)
-  );
+  const [account,setAccount]=useState<{id:string;role:AdminRole;email:string}|null>(null);
+  const [checked,setChecked]=useState(false);
+  useEffect(()=>{fetch('/api/admin/me',{credentials:'same-origin'}).then(r=>r.ok?r.json():null).then(a=>setAccount(a)).finally(()=>setChecked(true))},[]);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Preview-only visual simulator. Never use this state as server authorization.
+  const [demoRole,setDemoRole]=useState<AdminRole>("super_admin");
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -88,19 +56,11 @@ export default function AdminLayout() {
     document.title = item ? `${item.label} — 管理後台 — Westinghouse Pet` : "管理後台 — Westinghouse Pet";
   }, [location.pathname]);
 
-  const handleLogin = (s: string) => {
-    localStorage.setItem(ADMIN_SECRET_KEY, s);
-    setSecret(s);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem(ADMIN_SECRET_KEY);
-    setSecret(null);
-    navigate("/");
-  };
-
-  if (!secret) return <AdminLogin onLogin={handleLogin} />;
-
+  const handleLogin=()=>{fetch('/api/admin/me',{credentials:'same-origin'}).then(r=>r.json()).then(setAccount)};
+  const handleLogout=()=>{void fetch('/api/admin/logout',{method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'}});setAccount(null);navigate('/')};
+  if(!checked)return <p>驗證管理員身份中…</p>;
+  if(!account)return <AdminLogin onLogin={handleLogin}/>;
+  const effectiveRole=import.meta.env.DEV?demoRole:account.role;
   return (
     <div className="flex min-h-screen bg-neutral-50">
       {/* Mobile overlay */}
@@ -124,7 +84,7 @@ export default function AdminLayout() {
         </div>
 
         <nav className="space-y-1 p-3">
-          {navItems.map((item) => (
+          {navItems.filter(item=>hasAdminPermission(effectiveRole,ADMIN_PAGE_PERMISSION[item.to]||"dashboard.read")).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -163,8 +123,9 @@ export default function AdminLayout() {
           <span className="font-semibold">管理後台</span>
         </div>
 
+        {import.meta.env.DEV&&<div className="border-b bg-amber-50 px-4 py-2 text-sm"><label htmlFor="demo-role" className="mr-2 font-semibold">角色切換模擬器（僅視覺預覽，非登入身份）</label><select id="demo-role" value={demoRole} onChange={e=>{setDemoRole(e.target.value as AdminRole);navigate("/admin")}} className="rounded border p-1">{Object.entries(ROLE_LABELS).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></div>}
         <main className="p-4 md:p-6">
-          <Outlet context={{ secret }} />
+          {hasAdminPermission(effectiveRole,ADMIN_PAGE_PERMISSION[location.pathname]||"dashboard.read") ? <Outlet context={{ role: account.role }} /> : <p role="alert">模擬角色沒有此頁面權限。伺服器仍須獨立驗證。</p>}
         </main>
       </div>
     </div>

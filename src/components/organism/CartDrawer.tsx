@@ -1,3 +1,4 @@
+import {useProductPricing} from '@/context/ProductPricingContext';
 import {
   ShoppingCart,
   X,
@@ -34,6 +35,8 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
     error,
   } = useCart();
 
+  const {priceFor}=useProductPricing();
+  const dynamicCartTotal = items.reduce((sum,item)=>sum+(priceFor(item.slug||item.sku,item.price)/100)*item.quantity,0);
   const isEmpty = items.length === 0;
 
   return (
@@ -116,7 +119,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                 <>
                   <div className="mb-1.5 flex justify-between text-xs">
                     <span className="text-muted-foreground">
-                      再 NT${(FREE_SHIPPING_THRESHOLD - cartTotal).toLocaleString()} 即可享免運
+                      再 NT${(FREE_SHIPPING_THRESHOLD - dynamicCartTotal).toLocaleString()} 即可享免運
                     </span>
                     <span className="text-muted-foreground">
                       NT${FREE_SHIPPING_THRESHOLD.toLocaleString()}
@@ -168,7 +171,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
                           </Text>
                         )}
                         <Text variant="body" weight="bold" className="mt-0.5 text-primary">
-                          NT${(item.price / 100).toLocaleString()}
+                          NT${(priceFor(item.slug||item.sku,item.price) / 100).toLocaleString()}
                         </Text>
                       </div>
 
@@ -217,7 +220,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
             <div className="border-t border-border bg-neutral-50 p-5">
               <div className="mb-3 flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">小計</span>
-                <span className="font-medium">NT${cartTotal.toLocaleString()}</span>
+                <span className="font-medium">NT${dynamicCartTotal.toLocaleString()}</span>
               </div>
               <div className="mb-3 flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">運費</span>
@@ -229,7 +232,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-base font-bold">合計</span>
                 <span className="text-xl font-bold text-primary">
-                  NT${cartTotal.toLocaleString()}
+                  NT${dynamicCartTotal.toLocaleString()}
                 </span>
               </div>
               <Button

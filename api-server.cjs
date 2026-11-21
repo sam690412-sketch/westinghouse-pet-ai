@@ -21,7 +21,7 @@ const aiService = require("./ai-service.cjs");
 
 const PORT = process.env.API_PORT || 3002;
 const DATABASE_URI = process.env.DATABASE_URI || "";
-const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
+const rbac = require("./admin-rbac.cjs");
 
 // CORS allowlist — production domains
 const CORS_ALLOWLIST = (process.env.CORS_ALLOWLIST || "")
@@ -34,7 +34,7 @@ const corsOrigin = CORS_ALLOWLIST.length > 0 ? null : "*";
 
 const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, PATCH, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Admin-Secret",
+  "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Max-Age": "86400",
   "Content-Type": "application/json; charset=utf-8",
 };
@@ -42,9 +42,6 @@ const corsHeaders = {
 // Request size limits
 const MAX_BODY_SIZE = 256 * 1024; // 256KB
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024; // 10MB
-
-// Admin secret minimum length
-const ADMIN_SECRET_MIN_LENGTH = 16;
 
 function sendJSON(res, status, data) {
   res.writeHead(status, corsHeaders);
@@ -162,65 +159,9 @@ function serveStaticFile(res, pathname) {
 /*  ADMIN AUTH (hardened)                                             */
 /* ================================================================ */
 
-// Validate admin secret strength on startup
-function validateAdminSecret() {
-  if (!ADMIN_SECRET) {
-    console.warn("[SECURITY] ADMIN_SECRET not set — admin endpoints disabled");
-    return false;
-  }
-  if (ADMIN_SECRET.length < ADMIN_SECRET_MIN_LENGTH) {
-    console.error(`[SECURITY] ADMIN_SECRET too short (min ${ADMIN_SECRET_MIN_LENGTH} chars) — admin endpoints disabled`);
-    return false;
-  }
-  // Reject common weak secrets
-  const weakPatterns = ["admin", "password", "123456", "secret", "default"];
-  const lower = ADMIN_SECRET.toLowerCase();
-  for (const pattern of weakPatterns) {
-    if (lower.includes(pattern)) {
-      console.error(`[SECURITY] ADMIN_SECRET contains weak pattern '${pattern}' — admin endpoints disabled`);
-      return false;
-    }
-  }
-  return true;
-}
-const ADMIN_ENABLED = validateAdminSecret();
-
-const adminFailLog = new Map(); // ip -> { count, resetAt }
-const ADMIN_FAIL_WINDOW = 5 * 60 * 1000; // 5 minutes
-const ADMIN_FAIL_MAX = 5; // max failed attempts before lockout
-
-function requireAdmin(req) {
-  if (!ADMIN_ENABLED) return { error: "Admin access not configured", status: 503 };
-
-  const ip = req.socket.remoteAddress || "unknown";
-  const secret = req.headers["x-admin-secret"] || "";
-
-  // Check fail lockout
-  const failEntry = adminFailLog.get(ip);
-  if (failEntry && Date.now() < failEntry.resetAt && failEntry.count >= ADMIN_FAIL_MAX) {
-    return { error: "Too many failed attempts — try again later", status: 429 };
-  }
-
-  if (secret !== ADMIN_SECRET) {
-    // Log failed attempt
-    const now = Date.now();
-    if (!failEntry || now > failEntry.resetAt) {
-      adminFailLog.set(ip, { count: 1, resetAt: now + ADMIN_FAIL_WINDOW });
-    } else {
-      failEntry.count++;
-    }
-    // Audit log (fire and forget)
-    queryDB("SELECT public.log_audit($1, $2, $3, $4, $5)", [
-      "admin_auth_failed", null, null, null,
-      JSON.stringify({ ip, userAgent: req.headers["user-agent"]?.slice(0, 200), timestamp: new Date().toISOString() }),
-    ]).catch(() => {});
-    return { error: "Unauthorized", status: 401 };
-  }
-
-  // Clear fail count on success
-  adminFailLog.delete(ip);
-  return null; // OK
-}
+// Legacy shared-secret authentication is disabled. All admin routes are
+// handled by the signed-cookie RBAC router before legacy dispatch.
+function requireAdmin() { return {error:'Legacy admin API disabled',status:403}; }
 
 /* ================================================================ */
 /*  RATE LIMITING                                                     */
@@ -423,6 +364,21 @@ const routes = {
       `SELECT id, author_name, avatar_url, rating, title, content, product_sku, product_slug, verified, helpful_count, created_at FROM reviews ORDER BY created_at DESC LIMIT $1`, [limit]
     );
     return { data: result.rows };
+  },
+
+  // Prelaunch reservation: server-side validation + durable database write.
+  "/api/early-bird-reservations": async (_sp, body) => {
+    const {name,email,contact,region,locale,items}=body||{};
+    const clean=(v,max)=>typeof v==='string'?v.trim().slice(0,max):'';
+    const n=clean(name,120), e=clean(email,200), c=clean(contact,200), r=clean(region,120);
+    if(!n||!c||!r||!/^\S+@\S+\.\S+$/.test(e)) return {error:'Invalid contact information'};
+    if(!['zh-TW','en','th'].includes(locale)) return {error:'Invalid locale'};
+    if(!Array.isArray(items)||items.length<1||items.length>15) return {error:'Invalid items'};
+    const known=['m81-fresh-food-feeder','m12-panoramic-feeder','m31-gashapon-feeder','d11ba-water-dispenser','d61-stainless-dispenser'];
+    if(items.some(i=>!known.includes(i?.sku)||!Number.isInteger(i?.quantity)||i.quantity<1||i.quantity>99))return {error:'Invalid product or quantity'};
+    if(!DATABASE_URI)return {error:'Reservation storage not configured'};
+    await queryDB('INSERT INTO early_bird_reservations (name,email,contact,region,locale,items) VALUES ($1,$2,$3,$4,$5,$6::jsonb)',[n,e,c,r,locale,JSON.stringify(items)]);
+    return {ok:true};
   },
 
   // Cart
@@ -1440,11 +1396,28 @@ const server = http.createServer(async (req, res) => {
     // If serveStaticFile somehow falls through, continue to API 404
   }
 
+  // Prelaunch server gate: never accept payment/order creation until explicitly enabled.
+  if (process.env.IS_LIVE_STORE !== 'true' && ['/api/orders/create','/api/payments/create','/api/payments/mock'].includes(pathname)) {
+    sendJSON(res, 403, {error:'Checkout is disabled during prelaunch'}); return;
+  }
+
+  // 6. Secure RBAC router (must run before any legacy admin handler).
+  if (pathname.startsWith('/api/admin/') || (pathname==='/api/products/prices' && req.method==='GET')) {
+    let secureBody={};
+    if (['POST','PATCH'].includes(req.method)) { try { secureBody=await parseBody(req); } catch { sendJSON(res,400,{error:'Invalid JSON'});return; } }
+    const answer=await rbac.handle(req,pathname,secureBody);
+    if (answer) { res.writeHead(answer.status,{'Content-Type':'application/json; charset=utf-8',...responseHeaders,...answer.headers});res.end(JSON.stringify(answer.data));return; }
+  }
+
+  // Legacy admin handlers must NEVER be reached. RBAC owns all admin routes.
+  if (pathname.startsWith('/api/admin/')) { sendJSON(res,404,{error:'Admin route unavailable'}); return; }
+
   // 6. Route lookup
   let handler = routes[pathname];
 
   if (!handler && req.method === "POST") {
-    if (pathname === "/api/cart/validate") handler = routes["/api/cart/validate"];
+    if (pathname === "/api/early-bird-reservations") handler = routes["/api/early-bird-reservations"];
+    else if (pathname === "/api/cart/validate") handler = routes["/api/cart/validate"];
     else if (pathname === "/api/cart/add") handler = routes["/api/cart/add"];
     else if (pathname === "/api/orders/create") handler = routes["/api/orders/create"];
     else if (pathname === "/api/payments/create") handler = routes["/api/payments/create"];
@@ -1509,7 +1482,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+rbac.setup().then(()=>server.listen(PORT, () => {
   console.log(`\n=== API Server running on http://localhost:${PORT} ===`);
   console.log("Endpoints:");
   console.log(`  GET  /api/health`);
@@ -1529,6 +1502,6 @@ server.listen(PORT, () => {
   console.log(`  GET  /api/payments/newebpay/return  — Return URL`);
   console.log(`  POST /api/payments/mock             — Simulate payment (dev)`);
   console.log("============================================\n");
-});
+})).catch(err=>{console.error("SECURE STARTUP FAILED:",err.message);process.exitCode=1});
 
 process.on("SIGINT", () => { console.log("\nShutting down..."); server.close(() => process.exit(0)); });

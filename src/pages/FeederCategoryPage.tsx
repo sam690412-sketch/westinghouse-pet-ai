@@ -1,12 +1,14 @@
+import {useProductPricing} from '@/context/ProductPricingContext';
 import { Link } from "react-router";
 import { PageLayout } from "@/components/PageLayout";
-import { FEEDERS } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowRight, Check } from "lucide-react";
 
 export default function FeederCategoryPage() {
+ const {products:dynamicProducts}=useProductPricing();
+ const dynamicList=dynamicProducts.filter(p=>p.category==='feeder');
   return (
     <PageLayout
       title="自動餵食器"
@@ -21,7 +23,7 @@ export default function FeederCategoryPage() {
 
       {/* Product Cards */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 mb-10">
-        {FEEDERS.map((p) => (
+        {dynamicList.map((p) => (
           <Link key={p.slug} to={`/products/${p.slug}`} className="group rounded-xl border border-border bg-card p-4 transition-all hover:shadow-lg hover:border-primary/30">
             <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-muted mb-3">
               <img src={p.image} alt={p.name} className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105" />
@@ -49,7 +51,7 @@ export default function FeederCategoryPage() {
           <TableHeader>
             <TableRow>
               <TableHead>功能</TableHead>
-              {FEEDERS.map((p) => (
+              {dynamicList.map((p) => (
                 <TableHead key={p.slug} className="text-center">{p.name.split(" ")[0]}</TableHead>
               ))}
             </TableRow>
@@ -58,7 +60,7 @@ export default function FeederCategoryPage() {
             {["鮮食+乾糧","APP遠端操控","語音錄音","視訊監控","扭蛋趣味餵食"].map((feature) => (
               <TableRow key={feature}>
                 <TableCell className="font-medium">{feature}</TableCell>
-                {FEEDERS.map((p) => {
+                {dynamicList.map((p) => {
                   const hasFeature = p.features.some((f) => f.includes(feature.replace(/\+/g, "").substring(0, 2)) || (feature === "視訊監控" && f.includes("全景")) || (feature === "扭蛋趣味餵食" && f.includes("扭蛋")));
                   return <TableCell key={p.slug} className="text-center">{hasFeature ? <Check className="h-4 w-4 text-emerald-500 mx-auto" /> : "—"}</TableCell>;
                 })}
@@ -66,7 +68,7 @@ export default function FeederCategoryPage() {
             ))}
             <TableRow>
               <TableCell className="font-medium">價格</TableCell>
-              {FEEDERS.map((p) => (
+              {dynamicList.map((p) => (
                 <TableCell key={p.slug} className="text-center font-bold text-primary">NT${(p.price / 100).toLocaleString()}</TableCell>
               ))}
             </TableRow>
