@@ -7,7 +7,7 @@ export const ROLE_LABELS: Record<AdminRole,string> = {
 const all: AdminPermission[]=['products.read','prices.write','dashboard.read','orders.read','orders.manage','payments.read','inventory.read','inventory.manage','tickets.manage','warranties.manage','audit.read','content.manage','users.read','users.manage','approvals.read','approvals.decide','high_risk.request'];
 export const ADMIN_PERMISSIONS: Record<AdminRole,readonly AdminPermission[]> = {
   super_admin:all,
-  operations_manager:['products.read','prices.write','dashboard.read','orders.read','orders.manage','inventory.read','inventory.manage','tickets.manage','warranties.manage','high_risk.request'],
+  operations_manager:['products.read','prices.write','dashboard.read','orders.read','orders.manage','inventory.read','inventory.manage','tickets.manage','warranties.manage','approvals.read','high_risk.request'],
   marketing_editor:['dashboard.read','content.manage'],
   customer_support:['dashboard.read','orders.read','tickets.manage','warranties.manage']
 };
