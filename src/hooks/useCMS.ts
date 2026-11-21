@@ -190,20 +190,19 @@ function computeProductFields(p: CMSProduct): CMSProduct {
 /** Fetch single product by slug with LIVE commerce data + fallback */
 export function useProduct(slug: string) {
  const {priceFor,originalFor}=useProductPricing();
-  const apiResult = useAPI<CMSProduct>(
+  const apiResult = useAPI<CMSProduct | null>(
     async () => {
       const res = await apiGet<APIResponse<CMSProduct>>(`/products/detail?slug=${encodeURIComponent(slug)}`);
-      if (!res.data) throw new Error("Product not found");
-      return computeProductFields(res.data);
+      return res.data ? computeProductFields(res.data) : null;
     },
     [slug]
   );
 
   // Return fallback product when API fails
-  if ((apiResult.error || !apiResult.data) && FALLBACK_PRODUCTS[slug]) {
+  if (import.meta.env.DEV && apiResult.error && FALLBACK_PRODUCTS[slug]) {
     return { ...apiResult, data: {...FALLBACK_PRODUCTS[slug],price:priceFor(slug,FALLBACK_PRODUCTS[slug].price),compare_at_price:originalFor(slug,FALLBACK_PRODUCTS[slug].compare_at_price||FALLBACK_PRODUCTS[slug].price)}, error: null, isLoading: false };
   }
-  return {...apiResult,data:apiResult.data?{...apiResult.data,price:priceFor(slug,apiResult.data.price),compare_at_price:originalFor(slug,apiResult.data.compare_at_price||apiResult.data.price)}:null};
+  return {...apiResult,data:apiResult.data?.slug===slug?{...apiResult.data,price:priceFor(slug,apiResult.data.price),compare_at_price:originalFor(slug,apiResult.data.compare_at_price||apiResult.data.price)}:null};
 }
 
 /** Fetch all published products with LIVE commerce data */
