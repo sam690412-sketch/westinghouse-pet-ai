@@ -14,6 +14,7 @@ const { Client } = require("pg");
 const { URL } = require("url");
 const paymentService = require("./payment-service.cjs");
 const aiService = require("./ai-service.cjs");
+const { MARKET_PRICE_JOIN, prepareRenderQaCatalog } = require("./qa-product-schema.cjs");
 
 /* ================================================================ */
 /*  CONFIGURATION                                                     */
@@ -234,7 +235,7 @@ function isValidSku(sku) {
 async function queryDB(sql, params = []) {
   const client = new Client({
     connectionString: DATABASE_URI,
-    ssl: { rejectUnauthorized: false },
+    ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
     connectionTimeoutMillis: 10000,
     query_timeout: 15000,
   });
@@ -255,18 +256,25 @@ const PRODUCT_SELECT = `
   SELECT pc.slug, pc.sku, pc.name, pc.tagline, pc.short_description,
     pc.category, pc.solutions, pc.hero_image_url, pc.images, pc.features,
     pc.specs, pc.faq_items, pc.how_to_steps, pc.meta_title, pc.meta_description,
-    pc.created_at, pc.updated_at, cp.price, cp.compare_at_price, cp.currency,
+    pc.created_at, pc.updated_at,
+    COALESCE(pp.promo_twd, cp.price) * 100 AS price,
+    COALESCE(pp.msrp_twd, cp.compare_at_price) * 100 AS compare_at_price, cp.currency,
     cp.stock_quantity, cp.stock_status, cp.is_active as commerce_active,
     cp.preorder, cp.preorder_message, cp.shipping_class
   FROM product_contents pc
-  INNER JOIN commerce_products cp ON pc.id = cp.product_content_id
+  INNER JOIN commerce_products cp ON pc.id = cp.product_content_id AND pc.sku = cp.sku
+  ${MARKET_PRICE_JOIN}
   WHERE pc.deleted_at IS NULL AND cp.is_active = true
 `;
 const PRODUCT_ORDER = `ORDER BY cp.created_at DESC`;
 
 async function getCommerceProduct(sku) {
   const r = await queryDB(
-    "SELECT price, compare_at_price, stock_quantity, stock_status, is_active, preorder FROM commerce_products WHERE sku = $1",
+    `SELECT COALESCE(pp.promo_twd, cp.price) AS price, cp.stock_quantity, cp.stock_status, cp.is_active
+     FROM commerce_products cp
+     JOIN product_contents pc ON pc.id = cp.product_content_id AND pc.sku = cp.sku
+     ${MARKET_PRICE_JOIN}
+     WHERE cp.sku = $1 AND pc.deleted_at IS NULL`,
     [sku]
   );
   return r.rows[0] || null;
@@ -277,8 +285,11 @@ async function enrichCartItems(items) {
   const skus = items.map((i) => i.sku || i.product_sku);
   const placeholders = skus.map((_, i) => `$${i + 1}`).join(",");
   const result = await queryDB(
-    `SELECT pc.slug, pc.sku, pc.name, pc.tagline, pc.hero_image_url, cp.price, cp.compare_at_price, cp.stock_status, cp.stock_quantity, cp.currency, cp.preorder
-     FROM product_contents pc INNER JOIN commerce_products cp ON pc.id = cp.product_content_id
+    `SELECT pc.slug, pc.sku, pc.name, pc.tagline, pc.hero_image_url,
+       COALESCE(pp.promo_twd, cp.price) AS price, COALESCE(pp.msrp_twd, cp.compare_at_price) AS compare_at_price,
+       cp.stock_status, cp.stock_quantity
+     FROM product_contents pc INNER JOIN commerce_products cp ON pc.id = cp.product_content_id AND pc.sku = cp.sku
+     ${MARKET_PRICE_JOIN}
      WHERE pc.deleted_at IS NULL AND cp.is_active = true AND cp.sku IN (${placeholders})`,
     skus
   );
@@ -393,7 +404,7 @@ const routes = {
   "/api/cart/add": async (_sp, body) => {
     const { sku, quantity = 1 } = body;
     if (!sku) return { error: "sku required" };
-    if (quantity < 1) return { error: "quantity must be >= 1" };
+    if (!Number.isSafeInteger(quantity) || quantity < 1) return { error: "quantity must be a positive integer" };
     const product = await getCommerceProduct(sku);
     if (!product) return { error: "商品不存在" };
     if (!product.is_active) return { error: "商品已下架" };
@@ -1482,7 +1493,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-rbac.setup().then(()=>server.listen(PORT, () => {
+prepareRenderQaCatalog().then(() => rbac.setup()).then(()=>server.listen(PORT, () => {
   console.log(`\n=== API Server running on http://localhost:${PORT} ===`);
   console.log("Endpoints:");
   console.log(`  GET  /api/health`);
