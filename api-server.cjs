@@ -172,6 +172,13 @@ const rateLimits = new Map(); // request scope and IP -> { count, resetAt }
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX = 60; // requests per window (public)
 const RATE_LIMIT_ADMIN_MAX = 30; // requests per window (admin)
+const RATE_LIMIT_STATIC_ASSET_MAX = 600; // bounded separate image/build asset budget
+
+function isStaticAssetRequest(method, pathname) {
+  if (method !== "GET" && method !== "HEAD") return false;
+  // Only ordinary asset paths; no encoded characters, dot segments or API paths.
+  return /^\/(?:images|assets)\/(?:[A-Za-z0-9_-]+\/)*[A-Za-z0-9_-][A-Za-z0-9_.-]*\.(?:png|jpe?g|webp|gif|svg|avif|ico|js|mjs|css|woff2?|ttf|otf|eot)$/i.test(pathname);
+}
 
 function checkRateLimit(ip, scope) {
   const key = `${scope}:${ip}`;
@@ -181,7 +188,7 @@ function checkRateLimit(ip, scope) {
     rateLimits.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
     return { ok: true };
   }
-  const max = scope === "admin" ? RATE_LIMIT_ADMIN_MAX : RATE_LIMIT_MAX;
+  const max = scope === "admin" ? RATE_LIMIT_ADMIN_MAX : scope === "static-asset" ? RATE_LIMIT_STATIC_ASSET_MAX : RATE_LIMIT_MAX;
   if (entry.count >= max) {
     return { ok: false, retryAfter: Math.ceil((entry.resetAt - now) / 1000) };
   }
@@ -1409,7 +1416,7 @@ const server = http.createServer(async (req, res) => {
 
   // 5. Rate limiting
   const isAdminPath = pathname.startsWith("/api/admin/");
-  const rateScope = isAdminPath ? "admin" : pathname.startsWith("/api/") ? "api" : "static";
+  const rateScope = isAdminPath ? "admin" : pathname.startsWith("/api/") ? "api" : isStaticAssetRequest(req.method, pathname) ? "static-asset" : "static";
   const rateLimit = checkRateLimit(ip, rateScope);
   if (!rateLimit.ok) {
     res.writeHead(429, { ...responseHeaders, "Retry-After": String(rateLimit.retryAfter) });
