@@ -11,7 +11,7 @@ export function BestsellerSection() {
 
   return (
     <section className="bg-neutral-50 section-px section-py" aria-label="熱銷商品">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-container-lg">
         <SectionTitle
           title="熱銷精選"
           subtitle="萬位飼主一致推薦，口碑保證"

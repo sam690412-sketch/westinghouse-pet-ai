@@ -1,3 +1,5 @@
+import { IS_LIVE_STORE } from "@/config/storeConfig";
+import { I18nProvider, useI18n } from "@/i18n";
 import { Routes, Route, useLocation } from "react-router";
 import { Header } from "@/components/organism/Header";
 import { Footer } from "@/components/organism/Footer";
@@ -41,9 +43,9 @@ import AdminUsers from "./pages/admin/AdminUsers";
 
 export default function App() {
   return (
-    <ProductPricingProvider><CartProvider>
+    <I18nProvider><ProductPricingProvider><CartProvider>
       <AppInner />
-    </CartProvider></ProductPricingProvider>
+    </CartProvider></ProductPricingProvider></I18nProvider>
   );
 }
 
@@ -51,10 +53,14 @@ function AppInner() {
   const [cartOpen, setCartOpen] = useState(false);
   const { pathname } = useLocation();
   const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
+  const { t } = useI18n();
 
   useEffect(() => {
+    const openCart = () => setCartOpen(true);
+    window.addEventListener("wpet:open-cart", openCart);
     logDiagnostics();
     initErrorMonitoring();
+    return () => window.removeEventListener("wpet:open-cart", openCart);
   }, []);
 
   return (
@@ -102,7 +108,7 @@ function AppInner() {
           <Route path="/contact" element={<Safe name="Contact"><ContactPage /></Safe>} />
 
           {/* ===== CHECKOUT / ORDER ===== */}
-          <Route path="/checkout" element={<Safe name="Checkout"><Checkout /></Safe>} />
+          <Route path="/checkout" element={IS_LIVE_STORE ? <Safe name="Checkout"><Checkout /></Safe> : <section className="mx-auto max-w-xl p-12 text-center"><h1>{t("reservation")}</h1><p className="my-4">{t("checkoutBlocked")}</p><button className="rounded bg-primary p-3 text-white" onClick={() => setCartOpen(true)}>{t("cart")}</button></section>} />
           <Route path="/order-success" element={<Safe name="OrderSuccess"><OrderSuccess /></Safe>} />
 
           {/* ===== ADMIN ===== */}

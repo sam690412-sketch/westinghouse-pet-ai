@@ -1,3 +1,8 @@
+import { IS_LIVE_STORE } from "@/config/storeConfig";
+import { modelBySlug } from "@/i18n/products";
+import type { ProductModel } from "@/i18n/products";
+import type { Locale } from "@/i18n/types";
+
 /* ================================================================ */
 /*  SHARED REVIEW DATA — used by Home + Reviews page                  */
 /* ================================================================ */
@@ -21,7 +26,7 @@ export interface Review {
   recommend?: boolean;
 }
 
-export const REVIEWS: Review[] = [
+const REVIEW_ARCHIVE: Review[] = [
   {
     id: "r1",
     name: "陳小雅",
@@ -241,8 +246,52 @@ export const REVIEWS: Review[] = [
   },
 ];
 
-export const REVIEW_STATS = {
-  avgRating: 4.9,
-  totalCount: 1286,
-  fiveStarPercent: 96,
+// Pre-launch design preview. These archived examples are not verified purchases.
+// Turn off with VITE_SHOW_PREVIEW_REVIEWS=false; always off for the live store.
+export const SHOW_PREVIEW_REVIEWS = !IS_LIVE_STORE && import.meta.env.VITE_SHOW_PREVIEW_REVIEWS !== 'false';
+const modelPattern = /^(M81|M12|M31|D61|D11-BA)(?:\s|$)/;
+export function reviewModel(review: Review): ProductModel | undefined {
+  const match = modelPattern.exec(review.product)?.[1];
+  if (match === 'D11-BA') return 'D11BA';
+  if (match === 'M81' || match === 'M12' || match === 'M31' || match === 'D61') return match;
+  return undefined;
+}
+// Only independently verified IDs may be published as customer testimonials.
+const APPROVED_REVIEW_IDS = new Set<string>();
+export const PUBLISHED_REVIEWS = REVIEW_ARCHIVE.filter(r => reviewModel(r) && APPROVED_REVIEW_IDS.has(r.id) && r.verified);
+export const REVIEWS: Review[] = SHOW_PREVIEW_REVIEWS
+  ? REVIEW_ARCHIVE.filter(r => reviewModel(r)).map(r => ({...r, verified: false, badge: undefined, likes: 0, recommend: undefined, images: r.photos?.length ?? 0}))
+  : PUBLISHED_REVIEWS;
+export function reviewsForProduct(slug?: string): Review[] {
+  if (!slug) return REVIEWS;
+  const model = modelBySlug[slug];
+  return model ? REVIEWS.filter(r => reviewModel(r) === model) : [];
+}
+export function reviewStats(reviews: readonly Review[]) {
+  return {
+    totalCount: reviews.length,
+    avgRating: reviews.length ? Number((reviews.reduce((n,r)=>n+r.rating,0)/reviews.length).toFixed(2)) : 0,
+    fiveStarPercent: reviews.length ? Math.round(100*reviews.filter(r=>r.rating===5).length/reviews.length) : 0,
+  };
+}
+export const REVIEW_STATS = reviewStats(REVIEWS);
+export const reviewLabels: Record<Locale, {heading:string;preview:string;published:string;count:string;photos:string;close:string;all:string;back:string;empty:string;five:string}> = {
+  'zh-TW': {heading:'飼主使用分享',preview:'展示用分享｜網站規劃階段',published:'已發布顧客評價',count:'則分享',photos:'分享照片',close:'關閉',all:'查看全部分享',back:'返回首頁',empty:'目前尚無分享',five:'五星比例'},
+  en: {heading:'Pet owner stories',preview:'Preview examples | Site planning stage',published:'Published customer reviews',count:'stories',photos:'Story photo',close:'Close',all:'View all stories',back:'Back to home',empty:'No stories yet',five:'Five-star share'},
+  th: {heading:'เรื่องราวจากผู้เลี้ยงสัตว์',preview:'ตัวอย่างสำหรับการแสดงผล | ระหว่างวางแผนเว็บไซต์',published:'รีวิวลูกค้าที่เผยแพร่แล้ว',count:'เรื่องราว',photos:'ภาพประกอบเรื่องราว',close:'ปิด',all:'ดูเรื่องราวทั้งหมด',back:'กลับหน้าแรก',empty:'ยังไม่มีเรื่องราว',five:'สัดส่วนห้าดาว'},
 };
+
+/** Existing model-level presentation imagery; not attributed to individual review authors. */
+const MODEL_ALBUM: Record<ProductModel, string[]> = {
+  M81: ['/images/reviews/review-m81-01.jpg','/images/reviews/review-m81-02.jpg','/images/reviews/review-m81-03.jpg'],
+  M12: ['/images/reviews/review-m12-01.jpg'],
+  M31: ['/images/reviews/review-m31-01.jpg'],
+  D61: ['/images/reviews/review-d61-01.jpg'],
+  D11BA: ['/images/reviews/review-d11ba-01.jpg'],
+};
+export function previewAlbum(slug?: string): string[] {
+  if (!SHOW_PREVIEW_REVIEWS) return [];
+  const model = slug ? modelBySlug[slug] : undefined;
+  return slug ? (model ? MODEL_ALBUM[model] : []) : Object.values(MODEL_ALBUM).flat();
+}
+export const albumLabels: Record<Locale, string> = {'zh-TW':'機型生活情境相簿（展示）',en:'Product lifestyle album (preview)',th:'อัลบั้มภาพการใช้งานสินค้า (ตัวอย่าง)'};

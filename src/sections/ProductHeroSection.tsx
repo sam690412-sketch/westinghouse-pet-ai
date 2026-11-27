@@ -1,9 +1,11 @@
+import { IS_LIVE_STORE } from "@/config/storeConfig";
+import { useI18n } from "@/i18n";
+import { galleryFor } from "@/data/productGallery";
 import { ShoppingCart, Zap, Truck, ShieldCheck, Award, AlertTriangle, Check, RotateCcw, Cat, Clock, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CMSProduct } from "@/types/cms";
 import { PriceDisplay } from "@/components/atomic/PriceDisplay";
 import { StockStatus } from "@/components/atomic/StockStatus";
-import { RatingStars } from "@/components/atomic/RatingStars";
 import { Heading, Text } from "@/components/atomic/Typography";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,20 +47,18 @@ const productScenarios: Record<string, { for: string; scene: string; bundle: str
 };
 
 export function ProductHeroSection({ product }: ProductHeroSectionProps) {
+  const { t } = useI18n();
   const [quantity, setQuantity] = useState(1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [added, setAdded] = useState(false);
   const { addItem, isLoading: cartLoading, error: cartError } = useCart();
 
-  const isOutOfStock = product.stock_status === "out_of_stock";
-  const isLowStock = product.stock_status === "low_stock";
-  const isPreorder = product.stock_status === "pre_order";
+  const isOutOfStock = IS_LIVE_STORE && product.stock_status === "out_of_stock";
+  const isLowStock = IS_LIVE_STORE && product.stock_status === "low_stock";
+  const isPreorder = !IS_LIVE_STORE || product.stock_status === "pre_order";
 
-  const galleryImages: { url: string; alt: string }[] = [];
-  if (product.hero_image_url) galleryImages.push({ url: product.hero_image_url, alt: product.name });
-  // @ts-ignore — some products have lifestyle images via CMS
-  if ((product as Record<string, unknown>).lifestyle_image_url) galleryImages.push({ url: String((product as Record<string, unknown>).lifestyle_image_url), alt: `${product.name} 情境圖` });
-  if (galleryImages.length === 0) galleryImages.push({ url: "/images/products/card/m81-card.webp", alt: product.name });
+  const galleryImages = galleryFor(product.slug, product.name, product.hero_image_url);
+
 
   const discount = product.compare_at_price
     ? Math.round((1 - product.price / product.compare_at_price) * 100)
@@ -67,15 +67,16 @@ export function ProductHeroSection({ product }: ProductHeroSectionProps) {
   const scenario = productScenarios[product.slug];
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10" aria-label="商品資訊">
+    <section className="mx-auto max-w-container-lg px-4 py-6 sm:px-6 lg:px-8 lg:py-10" aria-label="商品資訊">
       <div className="grid gap-6 lg:grid-cols-2 lg:gap-10">
         {/* Image Gallery */}
         <div className="space-y-3">
-          <div className="relative aspect-square overflow-hidden rounded-xl border border-border bg-neutral-100">
+          <div className="relative aspect-square lg:aspect-auto lg:h-[560px] overflow-hidden rounded-xl border border-border bg-neutral-100">
             <img
-              src={galleryImages[selectedImage]?.url || "/images/products/card/m81-card.webp"}
+              src={galleryImages[selectedImage]?.url || galleryImages[0]?.url}
               alt={galleryImages[selectedImage]?.alt || product.name}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain"
+              onError={e => { if (!e.currentTarget.src.endsWith("/images/placeholder-product.jpg")) e.currentTarget.src = "/images/placeholder-product.jpg"; }}
               loading="eager"
             />
             <div className="absolute left-3 top-3 flex flex-col gap-2">
@@ -123,7 +124,7 @@ export function ProductHeroSection({ product }: ProductHeroSectionProps) {
 
           {/* Rating */}
           <div className="mt-2 flex items-center gap-2">
-            <RatingStars rating={4.8} reviewCount={128} size="sm" />
+
           </div>
 
           {/* Price — HIGH VISIBILITY */}
@@ -175,16 +176,16 @@ export function ProductHeroSection({ product }: ProductHeroSectionProps) {
               className="w-full gap-2 bg-primary text-primary-foreground shadow-md transition-all hover:shadow-lg hover:brightness-110 active:scale-[0.98] text-base font-semibold h-12"
               disabled={isOutOfStock || cartLoading}
               onClick={async () => {
-                try { await addItem(product.sku, quantity); setAdded(true); setTimeout(() => setAdded(false), 2000); }
+                try { await addItem(product.sku, quantity); setAdded(true); if (!IS_LIVE_STORE) window.dispatchEvent(new Event("wpet:open-cart")); setTimeout(() => setAdded(false), 2000); }
                 catch { /* error via cartError */ }
               }}
             >
               <ShoppingCart className="h-5 w-5" />
-              {isOutOfStock ? "暫時缺貨" : isPreorder ? "立即預購" : "先幫毛孩準備"}
+              {isOutOfStock ? "暫時缺貨" : isPreorder ? t("add") : "先幫毛孩準備"}
             </Button>
 
             {/* SECONDARY CTA */}
-            {!isOutOfStock && (
+            {IS_LIVE_STORE && !isOutOfStock && (
               <Button
                 variant="outline"
                 size="lg"

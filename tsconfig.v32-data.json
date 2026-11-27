@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "verbatimModuleSyntax": true,
+    "paths": {"@/*": ["./src/*"]},
+    "types": [],
+    "lib": ["ES2022"]
+  },
+  "files": ["src/i18n/types.ts", "src/i18n/products.ts", "src/config/storeConfig.ts", "src/types/preview-env.d.ts", "src/data/explodedViews.ts", "src/data/reviews.ts"]
+}

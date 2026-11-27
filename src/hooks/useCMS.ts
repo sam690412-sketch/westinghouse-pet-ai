@@ -1,3 +1,5 @@
+import { REVIEWS, reviewModel } from "@/data/reviews";
+import { modelBySlug } from "@/i18n/products";
 import {useProductPricing} from '@/context/ProductPricingContext';
 import { useState, useEffect, useCallback } from "react";
 import type {
@@ -19,18 +21,11 @@ import { env } from "@/lib/env";
    No hardcoded prices exist in this file.
    ================================================================ */
 
-const FALLBACK_REVIEWS: CMSReview[] = [
-  { id: "r1", author_name: "陳小姐", avatar_url: null, rating: 5, title: "貓咪終於愛喝水了！", content: "我家貓咪以前非常討厭喝水，自從換了這台飲水機之後，每天都會主動去喝好幾次。水流設計很安靜，晚上也不會吵。濾芯更換也很簡單，整體非常滿意！", product_sku: "WH-D11BA-TW", product_slug: "d11ba-water-dispenser", verified: true, helpful_count: 24, created_at: "2025-01-15" },
-  { id: "r2", author_name: "林先生", avatar_url: null, rating: 5, title: "餵食器超級方便", content: "上班時最怕毛孩餓肚子，這台餵食器可以精準控制每次的份量，APP 操作直覺。最喜歡可以錄製語音呼叫功能，毛孩聽到我的聲音就會跑過去！", product_sku: "WH-M81-TW", product_slug: "m81-fresh-food-feeder", verified: true, helpful_count: 18, created_at: "2025-01-10" },
-  { id: "r3", author_name: "王太太", avatar_url: null, rating: 4, title: "烘乾箱設計很貼心", content: "之前幫貓咪吹毛都要大戰半小時，現在放進去 20 分鐘就乾了。溫度很溫和不用擔心燙傷。唯一小缺點是體積比較大，建議先量好家裡空間。", product_sku: null, product_slug: null, verified: true, helpful_count: 12, created_at: "2024-12-28" },
-  { id: "r4", author_name: "張小姐", avatar_url: null, rating: 5, title: "餵食器救了我們全家", content: "經常加班到很晚，有了自動餵食器再也不用擔心毛孩挨餓，APP通知功能很貼心。", product_sku: "WH-M12-TW", product_slug: "m12-panoramic-feeder", verified: true, helpful_count: 32, created_at: "2025-01-08" },
-];
-
 const FALLBACK_LEARN_ARTICLES: CMSLearnArticle[] = [
-  { id: "a1", slug: "cat-not-drinking-water-guide", title: "貓咪不喝水怎麼辦？五大技巧讓貓愛上喝水", excerpt: "貓咪天生不愛喝水，但飲水不足會導致腎臟疾病。學會這五個技巧，讓貓咪愛上喝水。", content: null, category: "health", cover_image_url: "/images/learn/water.jpg", author: "獸醫師 王醫師", read_time: 5, published_at: "2025-01-10", updated_at: null },
-  { id: "a2", slug: "auto-feeder-guide", title: "自動餵食器選購指南：上班族必讀", excerpt: "加班、出差無法準時餵食？自動餵食器是你的好幫手。選購時要注意這些要點。", content: null, category: "guide", cover_image_url: "/images/learn/feeder.jpg", author: "Westinghouse Pet 編輯部", read_time: 8, published_at: "2025-01-05", updated_at: null },
-  { id: "a3", slug: "first-time-cat-owner", title: "新手養貓必備清單", excerpt: "第一次養貓不知道要準備什麼？這份清單幫你一次搞定所有必需品。", content: null, category: "guide", cover_image_url: "/images/learn/new-cat.jpg", author: "資深貓奴 李小姐", read_time: 6, published_at: "2024-12-28", updated_at: null },
-  { id: "a4", slug: "kidney-disease-prevention", title: "貓咪腎臟病預防：從飲水開始", excerpt: "腎臟病是貓咪常見疾病，但透過正確的飲水管理可以有效預防。", content: null, category: "health", cover_image_url: "/images/learn/kidney.jpg", author: "獸醫師 王醫師", read_time: 7, published_at: "2024-12-20", updated_at: null },
+  { id: "a1", slug: "cat-not-drinking-water-guide", title: "貓咪不喝水怎麼辦？五大技巧讓貓愛上喝水", excerpt: "貓咪天生不愛喝水，但飲水不足會導致腎臟疾病。學會這五個技巧，讓貓咪愛上喝水。", content: null, category: "health", cover_image_url: "/images/lifestyle/pet-house.jpg", author: "獸醫師 王醫師", read_time: 5, published_at: "2025-01-10", updated_at: null },
+  { id: "a2", slug: "auto-feeder-guide", title: "自動餵食器選購指南：上班族必讀", excerpt: "加班、出差無法準時餵食？自動餵食器是你的好幫手。選購時要注意這些要點。", content: null, category: "guide", cover_image_url: "/images/lifestyle/app-control.jpg", author: "Westinghouse Pet 編輯部", read_time: 8, published_at: "2025-01-05", updated_at: null },
+  { id: "a3", slug: "first-time-cat-owner", title: "新手養貓必備清單", excerpt: "第一次養貓不知道要準備什麼？這份清單幫你一次搞定所有必需品。", content: null, category: "guide", cover_image_url: "/images/lifestyle/morning.jpg", author: "資深貓奴 李小姐", read_time: 6, published_at: "2024-12-28", updated_at: null },
+  { id: "a4", slug: "kidney-disease-prevention", title: "貓咪腎臟病預防：從飲水開始", excerpt: "腎臟病是貓咪常見疾病，但透過正確的飲水管理可以有效預防。", content: null, category: "health", cover_image_url: "/images/lifestyle/pet-house.jpg", author: "獸醫師 王醫師", read_time: 7, published_at: "2024-12-20", updated_at: null },
 ];
 
 /* ================================================================ */
@@ -298,18 +293,15 @@ export function useLearnArticles(limit = 4) {
 /* ================================================================ */
 
 export function useReviews(limit = 6) {
-  return useAPIList<CMSReview>(
-    async () => {
-      try {
-        const res = await apiGet<APIResponse<CMSReview[]>>(`/reviews?limit=${limit}`);
-        if (res.data && res.data.length > 0) return res.data;
-      } catch {
-        // CMS table empty — use fallback
-      }
-      return FALLBACK_REVIEWS.slice(0, limit);
-    },
-    [limit]
-  );
+  // Shared, product-filtered preview source. No independently approved CMS IDs were supplied.
+  return useAPIList<CMSReview>(async () => REVIEWS.slice(0, limit).flatMap(r => {
+    const model = reviewModel(r);
+    const slug = Object.keys(modelBySlug).find(key => modelBySlug[key] === model);
+    if (!model || !slug) return [];
+    return [{id:r.id, author_name:r.name, avatar_url:null, rating:r.rating, title:r.highlight ?? null,
+      content:r.content, product_sku:model === 'D11BA' ? 'D11-BA' : model, product_slug:slug,
+      verified:r.verified, helpful_count:r.likes, created_at:r.date}];
+  }), [limit]);
 }
 
 /* ================================================================ */

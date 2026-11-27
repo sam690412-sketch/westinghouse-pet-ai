@@ -11,7 +11,7 @@ export function ProblemSolutionSection() {
 
   return (
     <section className="section-px section-py" aria-label="問題與解決方案">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-container-lg">
         <SectionTitle
           title="您的困擾，我們都懂"
           subtitle="從飼主真實需求出發，打造真正有用的智能產品"

@@ -1,4 +1,9 @@
-import { useParams, useNavigate } from "react-router";
+import { useI18n } from "@/i18n";
+import { productBySku } from "@/i18n/products";
+import { AuthenticReviewsSection } from "@/sections/AuthenticReviewsSection";
+import { ProductComparison } from "@/components/organism/ProductComparison";
+import { ProductExplodedView } from "@/components/organism/ProductExplodedView";
+import { useParams } from "react-router";
 import { useEffect } from "react";
 import {
   ProductHeroSection,
@@ -52,11 +57,11 @@ const DETAIL_DIR_MAP: Record<string, string> = {
 };
 
 const DETAIL_COUNTS: Record<string, number> = {
-  "m81-fresh-food-feeder": 22,
-  "m12-panoramic-feeder": 20,
-  "m31-gashapon-feeder": 19,
-  "d11ba-water-dispenser": 15,
-  "d61-stainless-dispenser": 12,
+  "m81-fresh-food-feeder": 5,
+  "m12-panoramic-feeder": 6,
+  "m31-gashapon-feeder": 5,
+  "d11ba-water-dispenser": 6,
+  "d61-stainless-dispenser": 5,
 };
 
 const PET_TAGS_MAP: Record<string, string[]> = {
@@ -76,7 +81,7 @@ const HIGHLIGHTS_MAP: Record<string, HighlightItem[]> = {
   "m81-fresh-food-feeder": [
     { icon: <Utensils className="h-6 w-6" />, label: "鮮濕糧分離" },
     { icon: <Smartphone className="h-6 w-6" />, label: "APP控制" },
-    { icon: <Thermometer className="h-6 w-6" />, label: "25°C恆溫鮮食" },
+    { icon: <Thermometer className="h-6 w-6" />, label: "25–28°C 預熱" },
     { icon: <Camera className="h-6 w-6" />, label: "攝影鏡頭" },
   ],
   "m12-panoramic-feeder": [
@@ -93,7 +98,7 @@ const HIGHLIGHTS_MAP: Record<string, HighlightItem[]> = {
   ],
   "d11ba-water-dispenser": [
     { icon: <Droplets className="h-6 w-6" />, label: "2.5L容量" },
-    { icon: <Shield className="h-6 w-6" />, label: "四重過濾" },
+    { icon: <Shield className="h-6 w-6" />, label: "五重過濾" },
     { icon: <VolumeX className="h-6 w-6" />, label: "靜音循環" },
     { icon: <Utensils className="h-6 w-6" />, label: "304不鏽鋼碗" },
   ],
@@ -105,23 +110,13 @@ const HIGHLIGHTS_MAP: Record<string, HighlightItem[]> = {
   ],
 };
 
-const COMPARISON_DATA = {
-  headers: ["", "M81", "M12", "M31"],
-  rows: [
-    { label: "容量", values: ["4L", "4L", "3L"] },
-    { label: "APP控制", values: ["✓", "✓", "✓"] },
-    { label: "攝影機", values: ["300°旋轉", "全景", "—"] },
-    { label: "鮮食功能", values: ["✓ 鎖鮮+預熱", "—", "—"] },
-    { label: "雙向語音", values: ["✓", "✓", "—"] },
-  ],
-};
 
 const LIFESTYLE_IMAGE_MAP: Record<string, string> = {
-  "m81-fresh-food-feeder": "/images/products/card/m81-card.webp",
-  "m12-panoramic-feeder": "/images/products/card/m12-card.webp",
-  "m31-gashapon-feeder": "/images/products/card/m31-card.webp",
-  "d11ba-water-dispenser": "/images/products/card/d11-ba-card.webp",
-  "d61-stainless-dispenser": "/images/products/card/d61-card.webp",
+  "m81-fresh-food-feeder": "/images/products/m81-lifestyle.jpg",
+  "m12-panoramic-feeder": "/images/products/m12-lifestyle.jpg",
+  "m31-gashapon-feeder": "/images/products/m31-lifestyle.jpg",
+  "d11ba-water-dispenser": "/images/products/d11ba-lifestyle.jpg",
+  "d61-stainless-dispenser": "/images/products/d61-lifestyle.jpg",
 };
 
 const SEO_MAP: Record<string, { title: string; description: string }> = {
@@ -143,7 +138,7 @@ const SEO_MAP: Record<string, { title: string; description: string }> = {
   "d11ba-water-dispenser": {
     title: "D11-BA 智慧寵物飲水機 | Westinghouse Pet 台灣官方",
     description:
-      "D11-BA 智慧寵物飲水機，2.5L大容量，四重過濾，寵物喝水量監控，缺水簡訊提醒。Westinghouse Pet 台灣官方旗艦店。",
+      "D11-BA 智慧寵物飲水機，2.5L大容量，五重過濾，寵物喝水量監控，缺水簡訊提醒。Westinghouse Pet 台灣官方旗艦店。",
   },
   "d61-stainless-dispenser": {
     title: "D61 智慧不鏽鋼寵物飲水機 | Westinghouse Pet 台灣官方",
@@ -170,14 +165,16 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
   const { data: product, isLoading: loading, error } = useProduct(slug || "");
   const { addItem } = useCart();
+  const { locale } = useI18n();
+  const copy = productBySku(product?.slug ?? slug ?? "", locale);
 
   /* ---- SEO ---- */
   useEffect(() => {
     if (!product) return;
-    const seo = SEO_MAP[product.slug];
+    const currentCopy = productBySku(product.slug, locale);
+    const seo = currentCopy ? { title: `${currentCopy.name} | Westinghouse Pet`, description: currentCopy.specs.map(([label, value]) => `${label}: ${value}`).join(" · ") } : SEO_MAP[product.slug];
     if (seo) {
       document.title = seo.title;
       const metaDesc = document.querySelector('meta[name="description"]');
@@ -207,9 +204,9 @@ export default function ProductDetail() {
     script.textContent = JSON.stringify({
       "@context": "https://schema.org",
       "@type": "Product",
-      name: product.name,
+      name: currentCopy?.name ?? product.name,
       image: product.hero_image_url || undefined,
-      description: product.short_description || undefined,
+      description: seo?.description ?? product.short_description ?? undefined,
       sku: product.sku || undefined,
       brand: { "@type": "Brand", name: "Westinghouse Pet" },
       offers: {
@@ -246,18 +243,14 @@ export default function ProductDetail() {
           returnFees: "https://schema.org/ReturnShippingFees",
         },
       },
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "4.8",
-        reviewCount: "128",
-      },
+      // Demo review data is never published as search-engine AggregateRating.
     });
     document.head.appendChild(script);
     return () => {
       const s = document.getElementById("jsonld-product");
       if (s) s.remove();
     };
-  }, [product]);
+  }, [product, locale]);
 
   if (loading) {
     return (
@@ -283,22 +276,25 @@ export default function ProductDetail() {
   /* ---- derived data ---- */
   const petTags = PET_TAGS_MAP[product.slug] || [];
   const highlights = HIGHLIGHTS_MAP[product.slug] || [];
+  const displayProduct = copy ? {...product, name: copy.name, tagline: copy.tagline} : product;
+  const specs = copy ? copy.specs.map(([label, value]) => ({label, value})) : (product.specs ?? []);
+  const features = copy ? copy.features.map(title => ({icon: "check-circle", title, description: ""})) : (product.features ?? []);
   const detailDir = DETAIL_DIR_MAP[product.slug];
   const detailCount = DETAIL_COUNTS[product.slug] || 0;
   const detailImages = detailDir
     ? Array.from({ length: detailCount }, (_, i) => `${detailDir}${String(i + 1).padStart(2, '0')}.webp`)
     : [];
   const lifestyleImg = LIFESTYLE_IMAGE_MAP[product.slug];
-  const showComparison = ["m81-fresh-food-feeder", "m12-panoramic-feeder", "m31-gashapon-feeder"].includes(product.slug);
+
 
   /* ---- handlers ---- */
   const handleAddToCart = () => {
-    if (product.sku) addItem(product.sku, 1);
+    if (product.sku) void addItem(product.sku, 1).catch(() => window.dispatchEvent(new Event("wpet:open-cart")));
   };
 
-  const handleBuyNow = () => {
-    handleAddToCart();
-    navigate("/cart");
+  const handleBuyNow = async () => {
+    try { if (product.sku) await addItem(product.sku, 1); } catch { /* CartDrawer shows the error. */ }
+    window.dispatchEvent(new Event("wpet:open-cart"));
   };
 
   return (
@@ -312,12 +308,13 @@ export default function ProductDetail() {
           <li>/</li>
           <li><a href="/products" className="hover:text-foreground">全部商品</a></li>
           <li>/</li>
-          <li className="text-foreground" aria-current="page">{product.name}</li>
+          <li className="text-foreground" aria-current="page">{displayProduct.name}</li>
         </ol>
       </nav>
 
       {/* ====== Hero ====== */}
-      <ProductHeroSection product={product} />
+      <ProductHeroSection key={product.slug} product={displayProduct} />
+      <ProductExplodedView key={product.slug} slug={product.slug} />
 
       {/* ====== 區塊2: 產品亮點摘要 ====== */}
       {highlights.length > 0 && (
@@ -369,18 +366,18 @@ export default function ProductDetail() {
       )}
 
       {/* ====== Features / Specs / FAQ ====== */}
-      {product.features && product.features.length > 0 && (
-        <ProductFeaturesSection features={product.features} />
+      {features.length > 0 && (
+        <ProductFeaturesSection features={features} />
       )}
 
-      {product.specs && product.specs.length > 0 && (
-        <ProductSpecsSection specs={product.specs} />
+      {specs.length > 0 && (
+        <ProductSpecsSection specs={specs} />
       )}
 
       {/* ====== 區塊4: 使用情境 ====== */}
       {lifestyleImg && (
         <section className="w-full bg-muted/30 py-12">
-          <div className="mx-auto max-w-[960px] px-4 sm:px-6">
+          <div className="mx-auto max-w-[1440px] px-4 sm:px-6">
             <SectionTitle>使用情境</SectionTitle>
             <img
               src={lifestyleImg}
@@ -393,41 +390,7 @@ export default function ProductDetail() {
       )}
 
       {/* ====== 區塊3: 產品比較表 ====== */}
-      {showComparison && (
-        <section className="w-full py-12">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6">
-            <SectionTitle>產品比較</SectionTitle>
-            <div className="overflow-x-auto rounded-2xl border border-border shadow-sm">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-primary text-primary-foreground">
-                    {COMPARISON_DATA.headers.map((h, i) => (
-                      <th key={i} className="px-4 py-3 text-center font-semibold">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON_DATA.rows.map((row, ri) => (
-                    <tr
-                      key={ri}
-                      className={ri % 2 === 0 ? "bg-card" : "bg-muted/30"}
-                    >
-                      <td className="px-4 py-3 font-medium">{row.label}</td>
-                      {row.values.map((v, ci) => (
-                        <td key={ci} className="px-4 py-3 text-center">
-                          {v}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-      )}
+      <ProductComparison />
 
       {product.faq_items && product.faq_items.length > 0 && (
         <ProductFAQSection faqItems={product.faq_items} />
@@ -436,7 +399,7 @@ export default function ProductDetail() {
       {/* ====== 產品詳細介紹 ====== */}
       {detailImages.length > 0 && (
         <section className="w-full py-12">
-          <div className="mx-auto max-w-[800px] px-4 sm:px-6">
+          <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
             <SectionTitle>產品詳細介紹</SectionTitle>
             <div className="flex flex-col gap-6">
               {detailImages.map((src, index) => (
@@ -452,6 +415,8 @@ export default function ProductDetail() {
           </div>
         </section>
       )}
+
+      <AuthenticReviewsSection productSlug={product.slug} />
 
       {/* ====== 區塊5: 保固與售後 ====== */}
       <section className="w-full bg-muted/30 py-12">

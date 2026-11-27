@@ -9,7 +9,8 @@
     "dev:full": "node api-server.cjs & vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify:v32": "tsc -p tsconfig.v32-data.json && node scripts/verify-v32.cjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

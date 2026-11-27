@@ -62,7 +62,7 @@ export default function WaterDispenserCategoryPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {["超靜音設計","四重過濾","不鏽鋼材質","水質監測","大容量"].map((feature) => (
+            {["超靜音設計","多重過濾","不鏽鋼材質","水質監測","大容量"].map((feature) => (
               <TableRow key={feature}>
                 <TableCell className="font-medium">{feature}</TableCell>
                 {dynamicList.map((p) => {

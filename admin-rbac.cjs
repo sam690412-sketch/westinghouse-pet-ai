@@ -113,7 +113,7 @@ try{
  if(pathname==='/api/admin/login'&&req.method==='POST'){
   const email=String(body.email||'').toLowerCase().trim(),password=String(body.password||'');const r=await q('SELECT * FROM admin_users WHERE email=$1 AND is_active=true',[email]);const u=r.rows[0];if(!u||!verify(password,u.password_hash))return reply(401,{error:'Invalid credentials'});
   const token=sign({id:u.id,email:u.email,role:u.role,v:u.session_version,exp:Date.now()+8*3600_000});return reply(200,{id:u.id,email:u.email,role:u.role},{'Set-Cookie':`wh_admin=${token}; HttpOnly; SameSite=Lax; Path=/api/admin; Max-Age=28800${secure?'; Secure':''}`});}
- if(pathname==='/api/products/prices'&&req.method==='GET'){const r=await q(catalogSelect + ' ORDER BY pp.sku');return reply(200,{data:r.rows.map(({sku,name_zh_tw,msrp_twd,retail_twd,promo_twd,is_active,slug,archived})=>({sku,name_zh_tw,msrp_twd,retail_twd,promo_twd,listed:!!(is_active && slug && !archived)}))})}
+ if(pathname==='/api/products/prices'&&req.method==='GET'){const r=await q(catalogSelect + ' ORDER BY pp.sku');return reply(200,{data:r.rows.map(({sku,name_zh_tw,msrp_twd,retail_twd,promo_twd,is_active,slug,archived})=>({sku,name_zh_tw,msrp_twd,retail_twd,promo_twd,listed:isListedCatalogProduct({is_active,slug,archived})}))})}
  if(!pathname.startsWith('/api/admin/'))return null;
  const a=await actor(req);if(!a)return reply(401,{error:'Login required'});
  if(pathname==='/api/admin/me')return reply(200,{id:a.id,email:a.email,role:a.role});
@@ -141,3 +141,40 @@ try{
  return reply(404,{error:'Admin route not implemented'});
  }catch(e){console.error('RBAC:',e.message);return reply(500,{error:'Admin operation failed'})}}
 module.exports={setup,handle,requirePermission};
+
+// V32_LISTED_RESERVATION_BEGIN
+// Keep the reservation gate and the public catalog on the same listing rule.
+function isListedCatalogProduct({is_active, slug, archived}) {
+  return !!(is_active && slug && !archived);
+}
+const reservationModelBySlug = Object.freeze({
+  'm81-fresh-food-feeder': 'M81',
+  'm12-panoramic-feeder': 'M12',
+  'm31-gashapon-feeder': 'M31',
+  'd61-stainless-dispenser': 'D61',
+  'd11ba-water-dispenser': 'D11-BA',
+});
+async function reserveListedProducts({name,email,contact,region,locale,items}) {
+  // This is intentionally fail-closed, including direct calls to the helper.
+  if (!Array.isArray(items) || items.length < 1 || items.length > 5 ||
+      items.some(i => !i || !Object.hasOwn(reservationModelBySlug,i.sku) ||
+        !Number.isSafeInteger(i.quantity) || i.quantity < 1 || i.quantity > 99) ||
+      new Set(items.map(i=>i.sku)).size !== items.length) return false;
+  return tx(async c => {
+    // Short-lived shared locks: allow concurrent reservations, serialize against
+    // changes to the catalog rows in these three tables. Timeout fails closed.
+    await c.query("SET LOCAL lock_timeout = '5s'");
+    await c.query('LOCK TABLE public.product_prices, public.product_contents, public.commerce_products IN SHARE MODE');
+    const {rows} = await c.query(catalogSelect + ' ORDER BY pp.sku');
+    const allListed = items.every(i => rows.some(row =>
+      row.sku === reservationModelBySlug[i.sku] && row.slug === i.sku && isListedCatalogProduct(row)));
+    if (!allListed) return false;
+    const cleanItems = items.map(({sku,quantity})=>({sku,quantity}));
+    const result=await c.query('INSERT INTO public.early_bird_reservations (name,email,contact,region,locale,items) VALUES ($1,$2,$3,$4,$5,$6::jsonb)',
+      [name,email,contact,region,locale,JSON.stringify(cleanItems)]);
+    if (result.rowCount !== 1) throw Error('Reservation insert not confirmed');
+    return true;
+  });
+}
+module.exports.reserveListedProducts = reserveListedProducts;
+// V32_LISTED_RESERVATION_END

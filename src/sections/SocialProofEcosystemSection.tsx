@@ -70,15 +70,18 @@ const socialProofs = [
 /* ------------------------------------------------------------------ */
 
 export function SocialProofEcosystemSection({ limit }: { limit?: number }) {
-  const displayProofs = limit ? socialProofs.slice(0, limit) : socialProofs;
+  const approvedUsers = new Set<string>();
+  const approved = socialProofs.filter(p => approvedUsers.has(p.username));
+  const displayProofs = limit ? approved.slice(0, limit) : approved;
   const { ref: headerRef, isVisible: headerVisible } = useScrollAnimation({ threshold: 0.2 });
 
+  if (!displayProofs.length) return null;
   return (
     <section
       className="section-px section-py"
       aria-label="社群口碑"
     >
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-container-lg">
         {/* Header */}
         <div
           ref={headerRef}

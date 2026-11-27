@@ -1,3 +1,4 @@
+import { useI18n } from "@/i18n";
 import type { CMSSpec } from "@/types/cms";
 import { Heading } from "@/components/atomic/Typography";
 import { useScrollAnimation } from "@/hooks/useScrollAnimation";
@@ -7,13 +8,14 @@ interface ProductSpecsSectionProps {
 }
 
 export function ProductSpecsSection({ specs }: ProductSpecsSectionProps) {
+  const { t } = useI18n();
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.1 });
 
   return (
-    <section className="section-px section-py" aria-label="產品規格">
+    <section className="section-px section-py" aria-label={t("specs")}>
       <div className="mx-auto max-w-3xl">
         <Heading as="h2" variant="h3" className="mb-8 text-center">
-          產品規格
+          {t("specs")}
         </Heading>
 
         <div
@@ -48,6 +50,7 @@ export function ProductSpecsSection({ specs }: ProductSpecsSectionProps) {
             </tbody>
           </table>
         </div>
+        <p className="mt-3 text-sm text-muted-foreground">{t("disclaimer")}</p>
       </div>
     </section>
   );

@@ -65,81 +65,6 @@ const defaultFilterOptions = [
   { label: "已驗證購買", value: "verified" },
 ];
 
-const defaultReviews: ReviewItem[] = [
-  {
-    id: "rev-001",
-    author: "林小姐",
-    avatarUrl: undefined,
-    rating: 5,
-    date: "2025-01-15",
-    title: "貓咪終於愛喝水了！",
-    content:
-      "我家貓咪以前非常討厭喝水，自從換了這台飲水機之後，每天都會主動去喝好幾次。水流設計很安靜，晚上也不會吵。濾芯更換也很簡單，整體非常滿意！",
-    verified: true,
-    helpfulCount: 24,
-  },
-  {
-    id: "rev-002",
-    author: "陳先生",
-    avatarUrl: undefined,
-    rating: 5,
-    date: "2025-01-10",
-    title: "餵食器超級方便",
-    content:
-      "上班時最怕毛孩餓肚子，這台餵食器可以精準控制每次的份量，APP 操作直覺。最喜歡可以錄製語音呼叫功能，毛孩聽到我的聲音就會跑過去！",
-    verified: true,
-    helpfulCount: 18,
-  },
-  {
-    id: "rev-003",
-    author: "王太太",
-    avatarUrl: undefined,
-    rating: 4,
-    date: "2024-12-28",
-    title: "烘乾箱設計很貼心",
-    content:
-      "之前幫貓咪吹毛都要大戰半小時，現在放進去 20 分鐘就乾了。溫度很溫和不用擔心燙傷。唯一小缺點是體積比較大，建議先量好家裡空間。",
-    verified: true,
-    helpfulCount: 12,
-  },
-  {
-    id: "rev-004",
-    author: "黃小姐",
-    avatarUrl: undefined,
-    rating: 5,
-    date: "2024-12-20",
-    title: "冷暖寵物窩冬天必備",
-    content:
-      "冬天開暖氣模式，貓咪幾乎整天窩在裡面不出來。夏天也有冷氣模式，一年四季都實用。材質很好清潔，內墊可以拆下來水洗。",
-    verified: true,
-    helpfulCount: 9,
-  },
-  {
-    id: "rev-005",
-    author: "張先生",
-    avatarUrl: undefined,
-    rating: 4,
-    date: "2024-12-15",
-    title: "品質不錯但價位偏高",
-    content:
-      "產品做工很精緻，用料感覺很扎實，APP 功能也很完整。但以價格來說算是中高價位，如果是多寵物家庭可能要考慮預算。",
-    verified: true,
-    helpfulCount: 7,
-  },
-  {
-    id: "rev-006",
-    author: "李小姐",
-    avatarUrl: undefined,
-    rating: 5,
-    date: "2024-12-08",
-    title: "客服服務超級好",
-    content:
-      "一開始不會設定 Wi-Fi，打給客服人員很有耐心地一步一步教我，最後順利連上了。產品好用，後續服務也讓人很安心。",
-    verified: true,
-    helpfulCount: 15,
-  },
-];
-
 /* ------------------------------------------------------------------ */
 /*  COMPONENT                                                          */
 /* ------------------------------------------------------------------ */
@@ -147,10 +72,10 @@ const defaultReviews: ReviewItem[] = [
 export function ReviewSection({
   title = "顧客真實評價",
   subtitle = "來自使用者的第一手心得",
-  reviews = defaultReviews,
-  averageRating = 4.7,
-  totalReviews = 1286,
-  ratingDistribution = { 5: 980, 4: 210, 3: 60, 2: 24, 1: 12 },
+  reviews = [],
+  averageRating = reviews.length ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length : 0,
+  totalReviews = reviews.length,
+  ratingDistribution = reviews.reduce<Record<number, number>>((counts, review) => { counts[review.rating] = (counts[review.rating] ?? 0) + 1; return counts; }, {}),
   showBreakdown = true,
   filterOptions = defaultFilterOptions,
   activeFilter = "all",

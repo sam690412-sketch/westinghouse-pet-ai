@@ -1,5 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { env } from "@/lib/env";
+import { IS_LIVE_STORE } from "@/config/storeConfig";
+import { PRODUCTS } from "@/data/products";
 
 /* ================================================================
    CART SYSTEM — Westinghouse Pet Taiwan
@@ -8,6 +10,25 @@ import { env } from "@/lib/env";
    ================================================================ */
 
 const API_BASE = env.API_BASE;
+function normalizeSku(sku: string) {
+ const key = sku.toUpperCase().replace(/^WH-/, "").replace(/-TW$/, "").replace(/-/g, "");
+ return PRODUCTS.find(p => p.slug === sku || p.slug.split("-")[0].toUpperCase() === key)?.slug || sku;
+}
+
+// V32: never derive reservability from the static product seed.
+async function fetchListedReservationSlugs(): Promise<Set<string>> {
+  const response=await fetch(`${API_BASE}/products/prices`, {cache:'no-store',headers:{Accept:'application/json'}});
+  if (!response.ok) throw new Error('Product availability temporarily unavailable');
+  const payload=await response.json() as {data?: unknown};
+  if (!Array.isArray(payload?.data)) throw new Error('Product availability temporarily unavailable');
+  const result=new Set<string>();
+  for (const row of payload.data) {
+    if (row?.listed !== true || typeof row.sku !== 'string') continue;
+    const slug=normalizeSku(row.sku);
+    if (PRODUCTS.some(p=>p.slug===slug)) result.add(slug);
+  }
+  return result;
+}
 
 const STORAGE_KEY = "wpet_cart";
 const STORAGE_VERSION = "1";
@@ -104,22 +125,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastAction, setLastAction] = useState<string | null>(null);
-  const isFirstRender = useRef(true);
+  const storageReady = useRef(false);
 
   /** Load cart from storage + enrich on mount */
   useEffect(() => {
     const stored = loadStorage();
     if (stored.length > 0) {
       enrichItems(stored);
+    } else {
+      storageReady.current = true;
     }
   }, []);
 
   /** Persist to storage whenever items change (after first render) */
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
+    if (!storageReady.current) return;
     const stored: CartStorageItem[] = items.map((i) => ({
       sku: i.sku,
       quantity: i.quantity,
@@ -133,9 +153,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
+      if (!IS_LIVE_STORE) {
+        const listed = await fetchListedReservationSlugs();
+        const restored = new Map<string, CartItem>();
+        for (const raw of stored) {
+          if (typeof raw?.sku !== 'string' || !Number.isSafeInteger(raw.quantity) || raw.quantity < 1) continue;
+          const product=PRODUCTS.find(p=>p.slug===normalizeSku(raw.sku));
+          if (!product || !listed.has(product.slug)) continue;
+          const quantity=Math.min(99,(restored.get(product.slug)?.quantity ?? 0)+raw.quantity);
+          restored.set(product.slug,{id:product.slug,slug:product.slug,sku:product.slug,name:product.name,tagline:product.tagline,price:0,quantity,stockStatus:'pre_order',stockQuantity:99,imageUrl:product.image,subtotal:0,maxQuantity:99});
+        }
+        storageReady.current = true;
+        setItems([...restored.values()]);
+        if (stored.some(raw=>typeof raw?.sku !== 'string' || !listed.has(normalizeSku(raw.sku)))) setError('Some products are no longer available for reservation');
+        return;
+      }
       const result = await apiPost<{ data: CartItem[]; total: number }>("/cart/validate", {
         items: stored.map((s) => ({ sku: s.sku, quantity: s.quantity })),
       });
+      storageReady.current = true;
       setItems(result.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load cart");
@@ -150,15 +186,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       setIsLoading(true);
       try {
+        if (!storageReady.current && loadStorage().length > 0) throw new Error('Cart restoration incomplete. Reload to retry.');
+        storageReady.current = true;
+        if (!IS_LIVE_STORE) {
+          if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) throw new Error('Invalid quantity');
+          if (!(await fetchListedReservationSlugs()).has(normalizeSku(sku))) throw new Error('Product is not available for reservation');
+        }
         // Check if already in cart
-        const existing = items.find((i) => i.sku === sku);
+        const existing = items.find((i) => i.sku === (IS_LIVE_STORE ? sku : normalizeSku(sku)));
         if (existing) {
           const newQty = existing.quantity + quantity;
-          await updateQuantity(existing.id, newQty);
+          if (!IS_LIVE_STORE) setItems(prev=>prev.map(i=>i.id===existing.id?{...i,quantity:Math.min(99,i.quantity+quantity)}:i));
+          else await updateQuantity(existing.id, newQty);
           setLastAction(`updated ${sku} to ${newQty}`);
           return;
         }
 
+        if (!IS_LIVE_STORE) {
+          if (!Number.isInteger(quantity) || quantity < 1) throw new Error("Invalid quantity");
+          const product=PRODUCTS.find(p=>p.slug===normalizeSku(sku));
+          if (!product) throw new Error('Unknown product SKU');
+          setItems(prev=>[...prev,{id:product.slug,slug:product.slug,sku:product.slug,name:product.name,tagline:product.tagline,price:0,quantity:Math.min(99,quantity),stockStatus:'pre_order',stockQuantity:99,imageUrl:product.image,subtotal:0,maxQuantity:99}]);
+          return;
+        }
         const result = await apiPost<{ data: CartItem }>("/cart/add", { sku, quantity });
         if (result.data) {
           setItems((prev) => [...prev, result.data]);
@@ -183,6 +233,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       setError(null);
       try {
+        if (!IS_LIVE_STORE) {
+          if (!Number.isSafeInteger(quantity) || quantity < 1) throw new Error('Invalid quantity');
+          if (quantity > item.quantity && !(await fetchListedReservationSlugs()).has(normalizeSku(item.sku))) throw new Error('Product is not available for reservation');
+          setItems(prev=>prev.map(i=>i.id===id?{...i,quantity:Math.min(99,quantity)}:i));return;
+        }
         const result = await apiPost<{ data: CartItem }>("/cart/add", {
           sku: item.sku,
           quantity,

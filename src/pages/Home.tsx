@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { ProductComparison } from "@/components/organism/ProductComparison";
 
 /* ================================================================ */
 /*  ABOVE-THE-FOLD: Eager loaded (LCP critical)                     */
@@ -10,9 +11,6 @@ import { BestsellerSection } from "@/sections/BestsellerSection";
 /* ================================================================ */
 /*  BELOW-THE-FOLD: Lazy loaded (code-split)                        */
 /* ================================================================ */
-const WhyChooseUsSection = lazy(() =>
-  import("@/sections/WhyChooseUsSection").then((m) => ({ default: m.WhyChooseUsSection }))
-);
 const ProblemSolutionSection = lazy(() =>
   import("@/sections/ProblemSolutionSection").then((m) => ({ default: m.ProblemSolutionSection }))
 );
@@ -70,13 +68,13 @@ export default function Home() {
       {/* Below the fold — lazy loaded */}
       <Suspense fallback={<SectionSkeleton />}>
         {/* 4. Why Choose Us */}
-        <WhyChooseUsSection />
+        <ProductComparison />
 
         {/* 5. Problem → Solution */}
         <ProblemSolutionSection />
 
-        {/* 6. Reviews — 3 curated */}
-        <AuthenticReviewsSection limit={3} />
+        {/* 6. Reviews — all preview stories */}
+        <AuthenticReviewsSection />
 
         {/* 7. Social Proof — 3 posts */}
         <SocialProofEcosystemSection limit={3} />

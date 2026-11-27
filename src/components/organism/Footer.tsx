@@ -145,7 +145,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
       >
         {/* Newsletter Section */}
         <div className="border-b border-border bg-primary px-4 py-8 lg:px-8">
-          <div className="mx-auto flex max-w-7xl flex-col items-center gap-4 md:flex-row md:justify-between">
+          <div className="mx-auto flex max-w-container-lg flex-col items-center gap-4 md:flex-row md:justify-between">
             <div className="text-center md:text-left">
               <h3 className="text-lg font-bold text-primary-foreground">
                 訂閱電子報
@@ -181,7 +181,7 @@ export const Footer = forwardRef<HTMLElement, FooterProps>(
 
         {/* Main Footer Content */}
         <div className="px-4 py-10 lg:px-8">
-          <div className="mx-auto grid max-w-7xl gap-8 sm:grid-cols-2 lg:grid-cols-12">
+          <div className="mx-auto grid max-w-container-lg gap-8 sm:grid-cols-2 lg:grid-cols-12">
             {/* Brand Column */}
             <div className="lg:col-span-4">
               <a href="/" className="inline-flex items-center gap-2 text-xl font-bold">

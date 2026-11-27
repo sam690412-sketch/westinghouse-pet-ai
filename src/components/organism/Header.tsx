@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useI18n } from "@/i18n";
 import { useCart } from "@/hooks/useCart";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
@@ -45,7 +46,7 @@ const defaultNavItems: NavItem[] = [
         children: [
           { label: "M81 鮮濕糧智慧餵食器", href: "/products/m81-fresh-food-feeder", tag: "旗艦" },
           { label: "M12 智慧全景餵食器", href: "/products/m12-panoramic-feeder", tag: "熱銷" },
-          { label: "M31 智慧扭蛋餵食器", href: "/products/m31-gashapon-feeder" },
+          { label: "M31 小Q智能餵食器", href: "/products/m31-gashapon-feeder" },
         ],
       },
       {
@@ -86,7 +87,7 @@ const defaultNavItems: NavItem[] = [
     label: "品牌故事", href: "/brand",
     children: [
       { label: "品牌理念", href: "/brand/story", description: "用科技守護毛孩" },
-      { label: "官方授權", href: "/trust/official-license", description: "台灣獨家總代理" },
+      { label: "官方授權", href: "/trust/official-license", description: "授權範圍待確認" },
       { label: "台灣保固", href: "/trust/warranty-commitment", description: "一年原廠保固" },
       { label: "品質承諾", href: "/trust/quality-certifications", description: "嚴格品質控管" },
     ],
@@ -188,6 +189,7 @@ export function Header({
   className, ...props
 }: HeaderProps) {
   const { cartCount } = useCart();
+  const {locale,setLocale,t}=useI18n();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -211,12 +213,12 @@ export function Header({
       {/* Top Bar */}
       <div className="hidden items-center justify-between border-b border-border/50 bg-neutral-50 px-4 py-1.5 text-xs text-muted-foreground md:flex lg:px-8">
         <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1"><PawPrint className="h-3 w-3 text-pet-paw" />台灣官方旗艦店</span>
+          <span className="flex items-center gap-1"><PawPrint className="h-3 w-3 text-pet-paw" />Westinghouse Pet Taiwan</span>
           <span className="hidden lg:inline">|</span>
-          <span className="hidden lg:inline">全館滿 NT$1,500 免運</span>
+          <span className="hidden lg:inline">產品上市資訊待公佈</span>
         </div>
         <div className="flex items-center gap-4">
-          <span>客服專線: 0800-000-000</span>
+          <span>客服聯絡方式待公佈</span>
           <span className="hidden lg:inline">|</span>
           <span className="hidden lg:inline">週一至週五 09:00-18:00</span>
         </div>
@@ -254,6 +256,9 @@ export function Header({
         {/* Right Actions */}
         <div className="flex items-center gap-1 sm:gap-2">
           <InstallAppButton />
+          <select aria-label="Language" value={locale} onChange={e=>setLocale(e.target.value as typeof locale)} className="max-w-[112px] rounded-md border border-border bg-background px-1 py-2 text-xs sm:max-w-none sm:px-2">
+            <option value="zh-TW">繁體中文</option><option value="en">English</option><option value="th">ไทย</option>
+          </select>
           <form onSubmit={handleSearchSubmit} className={cn("flex items-center overflow-hidden transition-all duration-300", searchOpen ? "w-48 opacity-100 sm:w-64" : "w-0 opacity-0")}>
             <Input type="text" placeholder="搜尋商品..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-9 text-sm" aria-label="搜尋商品" />
           </form>
@@ -264,7 +269,7 @@ export function Header({
             <Heart className="h-[18px] w-[18px]" />
             {wishlistCount > 0 && <Badge variant="destructive" className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center p-0 text-[10px]">{wishlistCount}</Badge>}
           </Button>
-          <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={onCartClick} aria-label="購物車">
+          <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={onCartClick} aria-label={t("cart")}>
             <ShoppingCart className="h-[18px] w-[18px]" />
             {cartCount > 0 && <Badge variant="destructive" className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center p-0 text-[10px]">{cartCount}</Badge>}
           </Button>

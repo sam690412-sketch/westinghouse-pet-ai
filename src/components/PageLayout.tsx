@@ -21,7 +21,7 @@ export function PageLayout({
     <main className="min-h-[70vh]">
       {/* Header */}
       <div className="border-b border-border bg-gradient-to-b from-primary/5 to-transparent">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-container-lg px-4 py-8 sm:px-6 lg:px-8">
           {/* Breadcrumbs */}
           {breadcrumbs && breadcrumbs.length > 0 && (
             <nav className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -46,7 +46,7 @@ export function PageLayout({
       </div>
 
       {/* Content */}
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-container-lg px-4 py-8 sm:px-6 lg:px-8">
         {children}
       </div>
     </main>

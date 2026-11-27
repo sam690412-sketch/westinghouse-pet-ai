@@ -381,6 +381,7 @@ const routes = {
 
   // Prelaunch reservation: server-side validation + durable database write.
   "/api/early-bird-reservations": async (_sp, body) => {
+    if (process.env.IS_LIVE_STORE === "true") return {status:403,error:"Prelaunch reservation is closed"};
     const {name,email,contact,region,locale,items}=body||{};
     const clean=(v,max)=>typeof v==='string'?v.trim().slice(0,max):'';
     const n=clean(name,120), e=clean(email,200), c=clean(contact,200), r=clean(region,120);
@@ -390,8 +391,15 @@ const routes = {
     const known=['m81-fresh-food-feeder','m12-panoramic-feeder','m31-gashapon-feeder','d11ba-water-dispenser','d61-stainless-dispenser'];
     if(items.some(i=>!known.includes(i?.sku)||!Number.isInteger(i?.quantity)||i.quantity<1||i.quantity>99))return {error:'Invalid product or quantity'};
     if(!DATABASE_URI)return {error:'Reservation storage not configured'};
-    await queryDB('INSERT INTO early_bird_reservations (name,email,contact,region,locale,items) VALUES ($1,$2,$3,$4,$5,$6::jsonb)',[n,e,c,r,locale,JSON.stringify(items)]);
-    return {ok:true};
+    if(new Set(items.map(i=>i.sku)).size!==items.length) return {status:400,error:'Duplicate product SKU'};
+    try {
+      const saved=await rbac.reserveListedProducts({name:n,email:e,contact:c,region:r,locale,items});
+      if(!saved) return {status:409,code:'PRODUCT_UNAVAILABLE',error:'One or more products are no longer available for reservation'};
+      return {ok:true};
+    } catch (err) {
+      console.error('[RESERVATION] Database operation failed', err?.code || 'UNKNOWN');
+      return {status:503,code:'RESERVATION_UNAVAILABLE',error:'Reservation service temporarily unavailable'};
+    }
   },
 
   // Cart
@@ -1417,7 +1425,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Prelaunch server gate: never accept payment/order creation until explicitly enabled.
-  if (process.env.IS_LIVE_STORE !== 'true' && ['/api/orders/create','/api/payments/create','/api/payments/mock'].includes(pathname)) {
+  if ((pathname === '/api/payments/mock' && process.env.NODE_ENV === 'production') || (process.env.IS_LIVE_STORE !== 'true' && ['/api/orders/create','/api/payments/create','/api/payments/mock'].includes(pathname))) {
     sendJSON(res, 403, {error:'Checkout is disabled during prelaunch'}); return;
   }
 

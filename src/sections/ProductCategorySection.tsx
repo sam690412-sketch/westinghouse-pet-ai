@@ -114,7 +114,7 @@ export function ProductCategorySection() {
 
       <div
         ref={stagger.ref}
-        className="mx-auto mt-10 grid max-w-6xl grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 lg:gap-5"
+        className="mx-auto mt-10 grid max-w-container-lg grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 lg:gap-5"
       >
         {categories.map((cat, i) => (
           <a
