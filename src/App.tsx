@@ -37,6 +37,7 @@ const FAQPage = lazy(() => import("./pages/FAQPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
 const AiKnowledgePage = lazy(() => import("./pages/admin/AiKnowledgePage"));
 const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const AdminReservations = lazy(() => import("./pages/admin/AdminReservations"));
 const AdminProducts = lazy(() => import("./pages/admin/AdminProducts"));
 const AdminApprovals = lazy(() => import("./pages/admin/AdminApprovals"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
@@ -116,6 +117,8 @@ function AppInner() {
           {/* ===== ADMIN ===== */}
 
           <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminReservations />} />
+            <Route path="reservations" element={<AdminReservations />} />
             <Route path="ai-knowledge" element={<AiKnowledgePage />} />
             <Route path="products" element={<AdminProducts />} />
             <Route path="approvals" element={<AdminApprovals />} />

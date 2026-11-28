@@ -21,6 +21,7 @@ import { ADMIN_PAGE_PERMISSION, hasAdminPermission, ROLE_LABELS, type AdminRole 
 
 const navItems = [
   { to: "/admin", label: "儀表板", icon: LayoutDashboard, exact: true },
+  { to: "/admin/reservations", label: "早鳥預約管理", icon: ClipboardList },
   { to: "/admin/products", label: "商品上架與價格", icon: Package },
   { to: "/admin/orders", label: "訂單管理", icon: ShoppingCart },
   { to: "/admin/payments", label: "付款管理", icon: CreditCard },
@@ -38,7 +39,7 @@ function AdminLogin({onLogin}:{onLogin:()=>void}){const[email,setEmail]=useState
 export default function AdminLayout() {
   const [account,setAccount]=useState<{id:string;role:AdminRole;email:string}|null>(null);
   const [checked,setChecked]=useState(false);
-  useEffect(()=>{fetch('/api/admin/me',{credentials:'same-origin'}).then(r=>r.ok?r.json():null).then(a=>setAccount(a)).finally(()=>setChecked(true))},[]);
+  useEffect(()=>{let active=true;fetch('/api/admin/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.ok?r.json():null).then(a=>{if(active)setAccount(a&&Object.hasOwn(ROLE_LABELS,a.role)?a:null)}).catch(()=>{if(active)setAccount(null)}).finally(()=>{if(active)setChecked(true)});return ()=>{active=false};},[]);
   const [mobileOpen, setMobileOpen] = useState(false);
   // Preview-only visual simulator. Never use this state as server authorization.
   const [demoRole,setDemoRole]=useState<AdminRole>("super_admin");
@@ -56,8 +57,8 @@ export default function AdminLayout() {
     document.title = item ? `${item.label} — 管理後台 — Westinghouse Pet` : "管理後台 — Westinghouse Pet";
   }, [location.pathname]);
 
-  const handleLogin=()=>{fetch('/api/admin/me',{credentials:'same-origin'}).then(r=>r.json()).then(setAccount)};
-  const handleLogout=()=>{void fetch('/api/admin/logout',{method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'}});setAccount(null);navigate('/')};
+  const handleLogin=()=>{fetch('/api/admin/me',{credentials:'same-origin',cache:'no-store'}).then(r=>r.ok?r.json():null).then(a=>setAccount(a&&Object.hasOwn(ROLE_LABELS,a.role)?a:null)).catch(()=>setAccount(null))};
+  const handleLogout=async()=>{try{const r=await fetch('/api/admin/logout',{method:'POST',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'}});if(!r.ok&&r.status!==401)throw Error('logout');setAccount(null);navigate('/')}catch{window.alert('登出未確認，請重試。')}};
   if(!checked)return <p>驗證管理員身份中…</p>;
   if(!account)return <AdminLogin onLogin={handleLogin}/>;
   const effectiveRole=import.meta.env.DEV?demoRole:account.role;
@@ -106,7 +107,7 @@ export default function AdminLayout() {
 
         <div className="absolute bottom-0 left-0 right-0 border-t border-border p-3">
           <button
-            onClick={handleLogout}
+            onClick={()=>void handleLogout()}
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-neutral-100 hover:text-foreground"
           >
             <LogOut className="h-4.5 w-4.5" />

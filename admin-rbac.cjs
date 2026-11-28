@@ -4,12 +4,13 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {Client}=require('pg');
 const {PRICE_MAPPING}=require('./qa-product-schema.cjs');
+const {createReservationAdmin}=require('./reservation-admin.cjs');
 const DB=process.env.DATABASE_URL || process.env.DATABASE_URI;
 const SIGNING_KEY=process.env.ADMIN_SESSION_SECRET || process.env.ADMIN_SESSION_SIGNING_KEY;
 const secure=process.env.NODE_ENV==='production';
 const permissions={
- super_admin:['*'],operations_manager:['products.read','products.listing.write','prices.write','inventory.write','orders.read','refund.request','settings.request','approvals.read'],
- marketing_editor:['content.write'],customer_support:['orders.read','tickets.write','warranties.write']};
+ super_admin:['*'],operations_manager:['products.read','products.listing.write','prices.write','inventory.write','orders.read','refund.request','settings.request','approvals.read','reservations.stats','reservations.read','reservations.manage','reservations.export'],
+ marketing_editor:['content.write','reservations.stats'],customer_support:['orders.read','tickets.write','warranties.write','reservations.stats','reservations.read','reservations.manage']};
 const client=()=>new Client({connectionString:DB,ssl:process.env.PGSSLMODE==='disable'?false:{rejectUnauthorized:false}});
 async function tx(fn){const c=client();await c.connect();try{await c.query('BEGIN');const out=await fn(c);await c.query('COMMIT');return out}catch(e){await c.query('ROLLBACK');throw e}finally{await c.end()}}
 async function q(sql,values=[]){const c=client();await c.connect();try{return await c.query(sql,values)}finally{await c.end()}}
@@ -19,12 +20,13 @@ function sign(payload){const body=Buffer.from(JSON.stringify(payload)).toString(
 function readToken(raw){if(!SIGNING_KEY||!raw)return null;const [body,sig]=raw.split('.');if(!body||!sig)return null;const correct=crypto.createHmac('sha256',SIGNING_KEY).update(body).digest('base64url');const a=Buffer.from(sig),b=Buffer.from(correct);if(a.length!==b.length||!crypto.timingSafeEqual(a,b))return null;try{const p=JSON.parse(Buffer.from(body,'base64url').toString());return p.exp>Date.now()?p:null}catch{return null}}
 const reply=(status,data,headers={})=>({status,data,headers});
 async function setup(){if(!DB||!SIGNING_KEY||SIGNING_KEY.length<32)throw Error('DATABASE_URI and strong ADMIN_SESSION_SIGNING_KEY required');
- const c=client();await c.connect();try{await c.query(fs.readFileSync(path.join(__dirname,'migrations/20261121_admin_rbac_approvals.sql'),'utf8'));await c.query(fs.readFileSync(path.join(__dirname,'migrations/20261121_approved_tw_prices.sql'),'utf8'));}finally{await c.end()}
+ const c=client();await c.connect();try{await c.query(fs.readFileSync(path.join(__dirname,'migrations/20261121_admin_rbac_approvals.sql'),'utf8'));await c.query(fs.readFileSync(path.join(__dirname,'migrations/20261121_approved_tw_prices.sql'),'utf8'));await c.query(fs.readFileSync(path.join(__dirname,'migrations/20261121_early_bird_reservations.sql'),'utf8'));await c.query(fs.readFileSync(path.join(__dirname,'migrations/20261128_reservation_operations.sql'),'utf8'));}finally{await c.end()}
  const email=process.env.BOOTSTRAP_SUPER_ADMIN_EMAIL?.toLowerCase().trim(),password=process.env.BOOTSTRAP_SUPER_ADMIN_PASSWORD;
  if(email&&password&&password.length>=14){await q("INSERT INTO admin_users(email,password_hash,display_name,role) VALUES($1,$2,'Bootstrap Admin','super_admin') ON CONFLICT(email) DO NOTHING",[email,hash(password)])}
 }
 async function actor(req){const raw=(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('wh_admin='))?.slice(9);const token=readToken(raw);if(!token)return null;const r=await q('SELECT id,email,role,is_active,session_version FROM admin_users WHERE id=$1',[token.id]);const a=r.rows[0];return a&&a.is_active&&a.session_version===token.v?a:null}
 function requirePermission(a,key){return !!a&&(permissions[a.role]||[]).includes('*')||(!!a&&(permissions[a.role]||[]).includes(key))}
+const reservationAdmin=createReservationAdmin({q,tx,requirePermission});
 async function before(c,type,id){if(type==='price_change'){const r=await c.query('SELECT sku,msrp_twd,retail_twd,promo_twd FROM product_prices WHERE sku=$1 FOR UPDATE',[id]);return r.rows[0]||null}
  if(type==='store_setting'){const r=await c.query('SELECT key,value FROM store_settings WHERE key=$1 FOR UPDATE',[id]);return r.rows[0]||null}
  if(type==='stock_adjustment'){const r=await c.query('SELECT sku,stock_quantity FROM commerce_products WHERE sku=$1 FOR UPDATE',[id]);return r.rows[0]||null}
@@ -115,7 +117,8 @@ try{
   const token=sign({id:u.id,email:u.email,role:u.role,v:u.session_version,exp:Date.now()+8*3600_000});return reply(200,{id:u.id,email:u.email,role:u.role},{'Set-Cookie':`wh_admin=${token}; HttpOnly; SameSite=Lax; Path=/api/admin; Max-Age=28800${secure?'; Secure':''}`});}
  if(pathname==='/api/products/prices'&&req.method==='GET'){const r=await q(catalogSelect + ' ORDER BY pp.sku');return reply(200,{data:r.rows.map(({sku,name_zh_tw,msrp_twd,retail_twd,promo_twd,is_active,slug,archived})=>({sku,name_zh_tw,msrp_twd,retail_twd,promo_twd,listed:isListedCatalogProduct({is_active,slug,archived})}))})}
  if(!pathname.startsWith('/api/admin/'))return null;
- const a=await actor(req);if(!a)return reply(401,{error:'Login required'});
+ const a=await actor(req);if(!a)return reply(401,{error:'Login required'},{'Cache-Control':'no-store, private'});
+ const reservationResponse=await reservationAdmin(req,pathname,body,a);if(reservationResponse)return reservationResponse;
  if(pathname==='/api/admin/me')return reply(200,{id:a.id,email:a.email,role:a.role});
  if(pathname==='/api/admin/logout'&&req.method==='POST')return reply(200,{ok:true},{'Set-Cookie':`wh_admin=; HttpOnly; SameSite=Lax; Path=/api/admin; Max-Age=0${secure?'; Secure':''}`});
  if(pathname==='/api/admin/products'&&req.method==='GET'){if(!requirePermission(a,'products.read'))return reply(403,{error:'Forbidden'});const r=await q(catalogSelect + ' ORDER BY pp.sku');return reply(200,{data:r.rows.map(p=>({...p,listing_issues:listingIssues(p)}))})}
