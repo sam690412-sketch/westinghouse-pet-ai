@@ -7,18 +7,13 @@ import { ProductComparison } from "@/components/organism/ProductComparison";
 import { HeroSection } from "@/sections/HeroSection";
 import { TrustIndicatorsSection } from "@/sections/TrustIndicatorsSection";
 import { BestsellerSection } from "@/sections/BestsellerSection";
+import { AuthenticReviewsSection } from "@/sections/AuthenticReviewsSection";
 
 /* ================================================================ */
 /*  BELOW-THE-FOLD: Lazy loaded (code-split)                        */
 /* ================================================================ */
 const ProblemSolutionSection = lazy(() =>
   import("@/sections/ProblemSolutionSection").then((m) => ({ default: m.ProblemSolutionSection }))
-);
-const AuthenticReviewsSection = lazy(() =>
-  import("@/sections/AuthenticReviewsSection").then((m) => ({ default: m.AuthenticReviewsSection }))
-);
-const SocialProofEcosystemSection = lazy(() =>
-  import("@/sections/SocialProofEcosystemSection").then((m) => ({ default: m.SocialProofEcosystemSection }))
 );
 const FAQPreviewSection = lazy(() =>
   import("@/sections/FAQPreviewSection").then((m) => ({ default: m.FAQPreviewSection }))
@@ -76,8 +71,6 @@ export default function Home() {
         {/* 6. Reviews — all preview stories */}
         <AuthenticReviewsSection />
 
-        {/* 7. Social Proof — 3 posts */}
-        <SocialProofEcosystemSection limit={3} />
 
         {/* 8. FAQ */}
         <FAQPreviewSection />

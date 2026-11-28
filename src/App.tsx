@@ -13,33 +13,33 @@ import { DegradedBanner } from "@/components/DegradedBanner";
 import { LinkInterceptor } from "@/components/LinkInterceptor";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { features, logDiagnostics } from "@/lib/env";
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import Home from "./pages/Home";
-import ProductDetail from "./pages/ProductDetail";
-import Checkout from "./pages/Checkout";
-import OrderSuccess from "./pages/OrderSuccess";
-import NotFound from "./pages/NotFound";
-import PlaceholderPage from "./pages/PlaceholderPage";
-import ReviewsPage from "./pages/ReviewsPage";
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const OrderSuccess = lazy(() => import("./pages/OrderSuccess"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const PlaceholderPage = lazy(() => import("./pages/PlaceholderPage"));
+const ReviewsPage = lazy(() => import("./pages/ReviewsPage"));
 
 /* ================================================================ */
 /*  PHASE 4.8 — Real Content Pages                                  */
 /* ================================================================ */
-import ProductsPage from "./pages/ProductsPage";
-import FeederCategoryPage from "./pages/FeederCategoryPage";
-import WaterDispenserCategoryPage from "./pages/WaterDispenserCategoryPage";
-import AccessoriesPage from "./pages/AccessoriesPage";
-import SolutionsLandingPage from "./pages/SolutionsLandingPage";
-import SolutionDetailPage from "./pages/SolutionDetailPage";
-import BrandStoryPage from "./pages/BrandStoryPage";
-import TrustPage from "./pages/TrustPage";
-import FAQPage from "./pages/FAQPage";
-import ContactPage from "./pages/ContactPage";
-import AiKnowledgePage from "./pages/admin/AiKnowledgePage";
-import AdminLayout from "./pages/admin/AdminLayout";
-import AdminProducts from "./pages/admin/AdminProducts";
-import AdminApprovals from "./pages/admin/AdminApprovals";
-import AdminUsers from "./pages/admin/AdminUsers";
+const ProductsPage = lazy(() => import("./pages/ProductsPage"));
+const FeederCategoryPage = lazy(() => import("./pages/FeederCategoryPage"));
+const WaterDispenserCategoryPage = lazy(() => import("./pages/WaterDispenserCategoryPage"));
+const AccessoriesPage = lazy(() => import("./pages/AccessoriesPage"));
+const SolutionsLandingPage = lazy(() => import("./pages/SolutionsLandingPage"));
+const SolutionDetailPage = lazy(() => import("./pages/SolutionDetailPage"));
+const BrandStoryPage = lazy(() => import("./pages/BrandStoryPage"));
+const TrustPage = lazy(() => import("./pages/TrustPage"));
+const FAQPage = lazy(() => import("./pages/FAQPage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
+const AiKnowledgePage = lazy(() => import("./pages/admin/AiKnowledgePage"));
+const AdminLayout = lazy(() => import("./pages/admin/AdminLayout"));
+const AdminProducts = lazy(() => import("./pages/admin/AdminProducts"));
+const AdminApprovals = lazy(() => import("./pages/admin/AdminApprovals"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 
 export default function App() {
   return (
@@ -54,6 +54,7 @@ function AppInner() {
   const { pathname } = useLocation();
   const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
   const { t } = useI18n();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
 
   useEffect(() => {
     const openCart = () => setCartOpen(true);
@@ -66,12 +67,13 @@ function AppInner() {
   return (
     <>
       {!isAdmin && <Safe name="Header">
-        <Header onCartClick={() => setCartOpen(true)} onSearch={() => {}} />
+        <Header onCartClick={() => setCartOpen(true)} />
       </Safe>}
 
-      <div className={isAdmin ? undefined : "pt-[60px]"}>
+      <div>
         {!isAdmin && <DegradedBanner />}
         <LinkInterceptor>
+        <Suspense fallback={<div role="status" className="container-section flex min-h-[50vh] items-center justify-center py-12">{t("loading")}</div>}>
         <Routes>
           {/* Home */}
           <Route path="/" element={<Safe name="Home"><Home /></Safe>} />
@@ -122,6 +124,7 @@ function AppInner() {
           {/* 404 fallback */}
           <Route path="*" element={<Safe name="NotFound"><NotFound /></Safe>} />
         </Routes>
+        </Suspense>
         </LinkInterceptor>
       </div>
 

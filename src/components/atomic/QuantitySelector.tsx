@@ -1,3 +1,5 @@
+import { useI18n } from "@/i18n";
+import { tr } from "@/i18n/storefront";
 import { Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { forwardRef, useCallback, useState } from "react";
@@ -13,6 +15,7 @@ export interface QuantitySelectorProps extends Omit<React.HTMLAttributes<HTMLDiv
 
 export const QuantitySelector = forwardRef<HTMLDivElement, QuantitySelectorProps>(
   ({ value: controlledValue, min = 1, max = 99, onChange, size = "md", disabled = false, className, ...props }, ref) => {
+    const { locale, t } = useI18n();
     const [internalValue, setInternalValue] = useState(min);
     const value = controlledValue ?? internalValue;
 
@@ -45,7 +48,7 @@ export const QuantitySelector = forwardRef<HTMLDivElement, QuantitySelectorProps
             size === "sm" && "h-8 w-8",
             size === "md" && "h-10 w-10",
           )}
-          aria-label="減少數量"
+          aria-label={tr(locale,"減少數量","Decrease quantity","ลดจำนวน")}
         >
           <Minus className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -58,7 +61,7 @@ export const QuantitySelector = forwardRef<HTMLDivElement, QuantitySelectorProps
           )}
           role="status"
           aria-live="polite"
-          aria-label={`數量: ${value}`}
+          aria-label={`${t("qty")}: ${value}`}
         >
           {value}
         </span>
@@ -72,7 +75,7 @@ export const QuantitySelector = forwardRef<HTMLDivElement, QuantitySelectorProps
             size === "sm" && "h-8 w-8",
             size === "md" && "h-10 w-10",
           )}
-          aria-label="增加數量"
+          aria-label={tr(locale,"增加數量","Increase quantity","เพิ่มจำนวน")}
         >
           <Plus className="h-4 w-4" aria-hidden="true" />
         </button>

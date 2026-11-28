@@ -1,3 +1,5 @@
+import { useI18n } from "@/i18n";
+import { tr } from "@/i18n/storefront";
 import { HelpCircle } from "lucide-react";
 import type { CMSProductFAQ } from "@/types/cms";
 import { Heading } from "@/components/atomic/Typography";
@@ -14,10 +16,12 @@ interface ProductFAQSectionProps {
 }
 
 export function ProductFAQSection({ faqItems }: ProductFAQSectionProps) {
+  const { locale, t } = useI18n();
   const { ref, isVisible } = useScrollAnimation({ threshold: 0.1 });
 
   const answerText = (answer: Record<string, unknown>): string => {
     if (typeof answer === "string") return answer;
+    if (typeof answer.text === "string") return answer.text;
     // Try to extract from Payload richText structure
     const root = answer.root as Record<string, unknown> | undefined;
     if (root && Array.isArray(root.children)) {
@@ -33,15 +37,16 @@ export function ProductFAQSection({ faqItems }: ProductFAQSectionProps) {
   };
 
   return (
-    <section className="bg-neutral-50 section-px section-py" aria-label="常見問題">
+    <section className="bg-neutral-50 section-px section-py" aria-label={t("faq")}>
       <div className="mx-auto max-w-3xl">
         <div className="mb-8 flex items-center justify-center gap-2">
           <HelpCircle className="h-6 w-6 text-primary" />
           <Heading as="h2" variant="h3">
-            常見問題
+            {t("faq")}
           </Heading>
         </div>
 
+        {locale!=="zh-TW"&&<p className="mb-5 text-center text-sm text-muted-foreground">{tr(locale,"","Original model-specific FAQ (Traditional Chinese).","คำถามเฉพาะรุ่นต้นฉบับ (ภาษาจีนตัวเต็ม)")}</p>}
         <div
           ref={ref}
           className="space-y-3"

@@ -93,14 +93,13 @@ export function checkHealth(): HealthStatus {
   const missing: string[] = [];
   const warnings: string[] = [];
 
-  if (!SUPABASE_URL) missing.push("VITE_SUPABASE_URL");
-  if (!SUPABASE_ANON_KEY) missing.push("VITE_SUPABASE_ANON_KEY");
+  if (!checks.supabase) warnings.push("Browser Supabase not configured — using backend API");
   if (!API_BASE) missing.push("VITE_API_BASE");
 
   if (!GA_ID) warnings.push("VITE_GA_ID not set — analytics disabled");
   if (!R2_PUBLIC_URL) warnings.push("VITE_R2_PUBLIC_URL not set — using local images");
 
-  const ok = checks.supabase && checks.api;
+  const ok = checks.api;
 
   return { ok, checks, missing, warnings };
 }

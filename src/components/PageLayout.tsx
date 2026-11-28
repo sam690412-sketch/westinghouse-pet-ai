@@ -24,12 +24,12 @@ export function PageLayout({
         <div className="mx-auto max-w-container-lg px-4 py-8 sm:px-6 lg:px-8">
           {/* Breadcrumbs */}
           {breadcrumbs && breadcrumbs.length > 0 && (
-            <nav className="mb-4 flex items-center gap-1.5 text-sm text-muted-foreground">
+            <nav className="mb-4 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
               <Link to="/" className="flex items-center hover:text-primary transition-colors">
                 <Home className="h-3.5 w-3.5" />
               </Link>
               {breadcrumbs.map((crumb, i) => (
-                <span key={i} className="flex items-center gap-1.5">
+                <span key={i} className="flex min-w-0 items-center gap-1.5">
                   <ChevronRight className="h-3.5 w-3.5" />
                   {crumb.href ? (
                     <Link to={crumb.href} className="hover:text-primary transition-colors">{crumb.label}</Link>

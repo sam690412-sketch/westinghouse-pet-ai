@@ -42,7 +42,7 @@ export function isSupabaseConfigured(): boolean {
   return _configured;
 }
 
-export const FALLBACK_IMAGE = "/images/products/card/m81-card.webp";
+export const FALLBACK_IMAGE = "/images/placeholder-product.jpg";
 
 export function buildImageUrl(
   pathOrUrl: string | null | undefined,
@@ -53,6 +53,8 @@ export function buildImageUrl(
   if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
     return { url: pathOrUrl, alt: alt || "產品圖片" };
   }
+
+  if (pathOrUrl.startsWith("/images/")) return { url: pathOrUrl, alt: alt || "產品圖片" };
 
   const R2_PUBLIC_URL = env.R2_PUBLIC_URL;
   if (!R2_PUBLIC_URL) return { url: FALLBACK_IMAGE, alt: alt || "暫無圖片" };

@@ -1,3 +1,5 @@
+import { useI18n } from "@/i18n";
+import { tr } from "@/i18n/storefront";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +34,7 @@ interface ChatContext {
 /*  PRESET QUESTIONS — Taiwan Traditional Chinese                     */
 /* ================================================================ */
 
-const PRESET_QUESTIONS = [
+const PRESET_QUESTIONS_ZH = [
   "貓咪不喝水該選哪一台？",
   "M81 可以放濕糧嗎？",
   "D11-BA 和 D61 怎麼選？",
@@ -67,6 +69,8 @@ function saveHistory(msgs: ChatMessage[]) {
 /* ================================================================ */
 
 export function AiChatWidget() {
+  const {locale,t}=useI18n();
+  const presets=locale==='zh-TW'?PRESET_QUESTIONS_ZH:locale==='en'?['Which fountain fits my pet?','Does M81 support wet food?','Compare D11-BA and D61','Filter compatibility','Warranty information','How to reserve']:['น้ำพุรุ่นใดเหมาะกับสัตว์เลี้ยง','M81 รองรับอาหารเปียกหรือไม่','เปรียบเทียบ D11-BA กับ D61','ไส้กรองที่รองรับ','ข้อมูลการรับประกัน','วิธีจองล่วงหน้า'];
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(loadHistory);
   const [input, setInput] = useState("");
@@ -123,7 +127,7 @@ export function AiChatWidget() {
       const assistantMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        text: data.reply || "抱歉，我暫時無法回答。請聯繫客服協助。",
+        text: data.reply || tr(locale,"暫時無法回答，請查看常見問題。","No answer is available. Please see the FAQ.","ยังไม่มีคำตอบ โปรดดูคำถามที่พบบ่อย"),
         type: data.type,
         actions: data.actions || [],
         timestamp: Date.now(),
@@ -139,12 +143,11 @@ export function AiChatWidget() {
       const fallbackMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        text: "抱歉，我目前離線中。您可以：\n1. 查看常見問題\n2. 聯繫 LINE 客服\n3. 致電 0800-000-000",
+        text: tr(locale,"智能客服暫時無法連線，請查看常見問題與上市資訊。","The assistant is temporarily unavailable. Please see the FAQ and launch information.","ผู้ช่วยไม่พร้อมใช้งานชั่วคราว โปรดดูคำถามที่พบบ่อยและข้อมูลการเปิดตัว"),
         type: "offline",
         actions: [
-          { label: "常見問題", url: "/faq", type: "internal" },
-          { label: "LINE 客服", url: "https://line.me/R/ti/p/@westinghousepet", type: "external" },
-          { label: "聯繫我們", url: "/contact", type: "internal" },
+          { label: t("faq"), url: "/faq", type: "internal" },
+          { label: t("contact"), url: "/contact", type: "internal" },
         ],
         timestamp: Date.now(),
       };
@@ -152,7 +155,7 @@ export function AiChatWidget() {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, context]);
+  }, [isLoading, context, locale, t]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,7 +194,7 @@ export function AiChatWidget() {
             "transition-all duration-300 hover:scale-110 hover:shadow-xl",
             "focus:outline-none focus:ring-2 focus:ring-primary/40"
           )}
-          aria-label="開啟 AI 客服"
+          aria-label={tr(locale,"開啟 AI 客服","Open AI assistant","เปิดผู้ช่วย AI")}
         >
           <MessageCircle className="h-6 w-6" />
         </button>
@@ -221,22 +224,22 @@ export function AiChatWidget() {
               <div className="flex items-center gap-2 text-white">
                 <Sparkles className="h-5 w-5" />
                 <div>
-                  <p className="text-sm font-semibold">Westinghouse AI 客服</p>
-                  <p className="text-[11px] text-white/70">24hr 智能回答，繁中台灣</p>
+                  <p className="text-sm font-semibold">{tr(locale,"Westinghouse AI 客服","Westinghouse AI assistant","ผู้ช่วย AI Westinghouse")}</p>
+                  <p className="text-[11px] text-white/70">{tr(locale,"產品資訊助手 · 服務可能暫時受限","Product information assistant · Availability may vary","ผู้ช่วยข้อมูลสินค้า · ความพร้อมใช้งานอาจแตกต่างกัน")}</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={clearHistory}
                   className="rounded p-1.5 text-white/70 hover:bg-white/20 transition-colors"
-                  title="清除對話"
+                  title={tr(locale,"清除對話","Clear conversation","ล้างการสนทนา")}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}
                   className="rounded p-1.5 text-white/70 hover:bg-white/20 transition-colors"
-                  aria-label="關閉"
+                  aria-label={tr(locale,"關閉","Close","ปิด")}
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -255,7 +258,7 @@ export function AiChatWidget() {
                     <div className="max-w-[80%]">
                       <div className="rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-2.5">
                         <p className="text-sm text-slate-700">
-                          嗨！我是 Westinghouse Pet 的智能客服 🐾\n\n有什麼關於產品、保固或使用的問題，我都可以幫您！也可以直接點下面的常見問題 👇
+                          {tr(locale,"歡迎詢問商品規格或上市預約資訊。回覆可能使用繁體中文。","Ask about specifications or reservations. Replies may be in Traditional Chinese.","สอบถามข้อมูลจำเพาะหรือการจองล่วงหน้าได้ คำตอบอาจเป็นภาษาจีนตัวเต็ม")}
                         </p>
                       </div>
                     </div>
@@ -263,7 +266,7 @@ export function AiChatWidget() {
 
                   {/* Preset Questions */}
                   <div className="ml-10.5 space-y-1.5">
-                    {PRESET_QUESTIONS.map((q) => (
+                    {presets.map((q) => (
                       <button
                         key={q}
                         onClick={() => handlePresetClick(q)}
@@ -277,7 +280,7 @@ export function AiChatWidget() {
 
                   {/* Privacy notice */}
                   <p className="text-center text-[10px] text-muted-foreground pt-2">
-                    對話紀錄儲存在您的裝置中，不會上傳到伺服器
+                    {tr(locale,"對話紀錄儲存在裝置中；送出問題時會傳送至後端服務，請勿輸入敏感個資。","History is stored on your device; submitted questions are sent to the backend. Avoid sensitive personal data.","ประวัติจัดเก็บในอุปกรณ์ คำถามที่ส่งจะถูกส่งไปยังระบบหลังบ้าน โปรดหลีกเลี่ยงข้อมูลส่วนบุคคลที่ละเอียดอ่อน")}
                   </p>
                 </div>
               )}
@@ -357,7 +360,7 @@ export function AiChatWidget() {
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="輸入您的問題..."
+                  placeholder={tr(locale,"輸入您的問題…","Type your question…","พิมพ์คำถาม…")}
                   className="flex-1 text-sm"
                   disabled={isLoading}
                 />
@@ -371,7 +374,7 @@ export function AiChatWidget() {
                 </Button>
               </div>
               <p className="mt-1.5 text-center text-[10px] text-muted-foreground">
-                AI 回答僅供參考，產品/保固問題請以官方公告為準
+                {tr(locale,"AI 回答僅供參考，產品與保固以正式公告為準。","AI answers are for reference only; follow confirmed product and warranty notices.","คำตอบ AI ใช้อ้างอิงเท่านั้น โปรดอ้างอิงประกาศสินค้าและการรับประกันที่ยืนยันแล้ว")}
               </p>
             </form>
           </div>

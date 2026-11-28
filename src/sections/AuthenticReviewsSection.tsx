@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Star, X } from 'lucide-react';
 import { useI18n } from '@/i18n';
-import { reviewsForProduct, reviewStats, reviewLabels, SHOW_PREVIEW_REVIEWS, previewAlbum, albumLabels } from '@/data/reviews';
+import { productCopy } from '@/i18n/products';
+import { tr } from '@/i18n/storefront';
+import { reviewsForProduct, reviewModel, reviewStats, reviewLabels, SHOW_PREVIEW_REVIEWS, previewAlbum, albumLabels } from '@/data/reviews';
 
 export interface AuthenticReviewsSectionProps { limit?: number; productSlug?: string; showAllLink?: boolean }
 
@@ -35,6 +37,7 @@ export function AuthenticReviewsSection({limit, productSlug, showAllLink = true}
             <span className="text-sm text-muted-foreground">{stats.totalCount} {labels.count} · {labels.five} {stats.fiveStarPercent}%</span>
           </div>
         </header>
+        {locale !== "zh-TW" && <p className="mb-5 text-center text-xs text-muted-foreground">{tr(locale,"","Original preview stories are shown in Traditional Chinese.","เรื่องราวตัวอย่างต้นฉบับแสดงเป็นภาษาจีนตัวเต็ม")}</p>}
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {displayReviews.map(review=>(
             <article key={review.id} className="flex flex-col rounded-2xl border bg-white p-5 shadow-sm">
@@ -42,7 +45,7 @@ export function AuthenticReviewsSection({limit, productSlug, showAllLink = true}
                 <div className={`flex h-10 w-10 items-center justify-center rounded-full font-bold ${review.avatarColor || 'bg-neutral-100'}`}>{review.avatar}</div>
                 <div><p className="font-semibold">{review.name}</p><p className="text-xs text-muted-foreground">{review.date}</p></div>
               </div>
-              <p className="mt-3 text-sm font-semibold text-primary">{review.product}</p>
+              <p className="mt-3 text-sm font-semibold text-primary">{(() => { const model=reviewModel(review); return model ? productCopy[model][locale].name : review.product; })()}</p>
               <div className="mt-2 flex gap-0.5" aria-label={`${review.rating}/5`}>
                 {Array.from({length:5}, (_,i)=><Star key={i} aria-hidden="true" className={`h-4 w-4 ${i<review.rating?'fill-amber-400 text-amber-400':'text-neutral-300'}`}/>)}
               </div>

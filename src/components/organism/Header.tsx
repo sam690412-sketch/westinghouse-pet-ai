@@ -1,429 +1,101 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { Link } from "react-router";
-import {
-  Menu, X, ShoppingCart, Search, User, ChevronDown, ChevronRight,
-  PawPrint, Heart, Smartphone,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { useI18n } from "@/i18n";
-import { useCart } from "@/hooks/useCart";
-import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import {
-  NavigationMenu, NavigationMenuContent,
-  NavigationMenuItem, NavigationMenuList,
-  NavigationMenuTrigger, navigationMenuTriggerStyle,
-} from "@/components/ui/navigation-menu";
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router';
+import { Menu, X, ShoppingCart, Search, ChevronDown, Smartphone, User, Heart } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { useCart } from '@/hooks/useCart';
+import { useProductPricing } from '@/context/ProductPricingContext';
+import { useI18n } from '@/i18n';
+import { productBySku } from '@/i18n/products';
+import { storefront, tr } from '@/i18n/storefront';
+import type { Locale } from '@/i18n/types';
 
-/* ================================================================ */
-/*  TYPES                                                             */
-/* ================================================================ */
-
+// Keep exported contracts for existing consumers; all public links use live listing data.
 export interface NavGrandChild { label: string; href: string; tag?: string; }
-export interface NavChild {
-  label: string; href: string; description?: string; featured?: boolean; children?: NavGrandChild[];
-}
+export interface NavChild { label: string; href: string; description?: string; featured?: boolean; children?: NavGrandChild[]; }
 export interface NavItem { label: string; href: string; children?: NavChild[]; }
-
 export interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
   logoText?: string; wishlistCount?: number; isAuthenticated?: boolean; userName?: string;
   onSearch?: (query: string) => void; onCartClick?: () => void; onWishlistClick?: () => void;
   onLoginClick?: () => void; onAccountClick?: () => void; onMobileMenuToggle?: (open: boolean) => void;
 }
-
-/* ================================================================ */
-/*  NAV DATA — slug 与 App.tsx routes 严格对应                       */
-/* ================================================================ */
-
-const defaultNavItems: NavItem[] = [
-  {
-    label: "商品總覽", href: "/products",
-    children: [
-      {
-        label: "自動餵食器", href: "/products/feeders", description: "定時定量，智慧餵食",
-        children: [
-          { label: "M81 鮮濕糧智慧餵食器", href: "/products/m81-fresh-food-feeder", tag: "旗艦" },
-          { label: "M12 智慧全景餵食器", href: "/products/m12-panoramic-feeder", tag: "熱銷" },
-          { label: "M31 小Q智能餵食器", href: "/products/m31-gashapon-feeder" },
-        ],
-      },
-      {
-        label: "寵物飲水機", href: "/products/water-dispensers", description: "循環過濾，新鮮活水",
-        children: [
-          { label: "D11-BA 智慧寵物飲水機", href: "/products/d11ba-water-dispenser", tag: "熱銷" },
-          { label: "D61 智慧不鏽鋼寵物飲水機", href: "/products/d61-stainless-dispenser" },
-        ],
-      },
-      {
-        label: "耗材配件", href: "/products/accessories", description: "濾芯、電源線等原廠配件",
-        children: [
-          { label: "飲水機濾芯組", href: "/products/d11ba-water-dispenser" },
-          { label: "餵食器配件", href: "/products/m81-fresh-food-feeder" },
-        ],
-      },
-      {
-        label: "組合方案", href: "/products", description: "精選組合更優惠",
-        children: [
-          { label: "餵食+飲水組合", href: "/products/m81-fresh-food-feeder" },
-          { label: "新手入門組", href: "/products/d11ba-water-dispenser" },
-        ],
-      },
-    ],
-  },
-  {
-    label: "使用指南", href: "/solutions",
-    children: [
-      { label: "貓咪不喝水", href: "/solutions/cat-not-drinking-water", description: "飲水習慣改善攻略" },
-      { label: "多貓家庭", href: "/solutions/multi-cat-household-feeding", description: "多貓共用與分流方案" },
-      { label: "長時間不在家", href: "/solutions/long-hours-away-cat-care", description: "出差旅行安心餵食" },
-      { label: "濕糧保存", href: "/solutions/wet-food-fresh-storage", description: "鮮食保鮮不浪費" },
-      { label: "腎貓照護", href: "/solutions/kidney-disease-cat-care", description: "腎貓飲水與飲食管理" },
-      { label: "新手養貓", href: "/solutions/first-time-cat-owner-essentials", description: "第一次養貓必備指南" },
-    ],
-  },
-  {
-    label: "品牌故事", href: "/brand",
-    children: [
-      { label: "品牌理念", href: "/brand/story", description: "用科技守護毛孩" },
-      { label: "官方授權", href: "/trust/official-license", description: "授權範圍待確認" },
-      { label: "台灣保固", href: "/trust/warranty-commitment", description: "一年原廠保固" },
-      { label: "品質承諾", href: "/trust/quality-certifications", description: "嚴格品質控管" },
-    ],
-  },
-  { label: "顧客評價", href: "/reviews" },
-  {
-    label: "常見問題", href: "/faq",
-    children: [
-      { label: "付款問題", href: "/faq/payment" },
-      { label: "配送問題", href: "/faq/shipping" },
-      { label: "保固問題", href: "/faq/warranty" },
-      { label: "商品使用", href: "/faq/product-usage" },
-      { label: "濾芯更換", href: "/faq/filter-replacement" },
-    ],
-  },
-  { label: "聯絡我們", href: "/contact" },
-];
-
-/* ================================================================ */
-/*  COMPONENT                                                         */
-/* ================================================================ */
-
-interface InstallPromptEvent extends Event {
-  prompt(): Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+interface InstallPromptEvent extends Event { prompt(): Promise<{ outcome: 'accepted' | 'dismissed' }>; }
 
 function InstallAppButton() {
-  const installPrompt = useRef<InstallPromptEvent | null>(null);
-  const [instructionsOpen, setInstructionsOpen] = useState(false);
-  const [installed, setInstalled] = useState(() => {
-    const iosStandalone = (navigator as Navigator & { standalone?: boolean }).standalone;
-    return !!iosStandalone || window.matchMedia("(display-mode: standalone)").matches;
-  });
-
-  useEffect(() => {
-    function saveInstallPrompt(event: Event) {
-      event.preventDefault();
-      installPrompt.current = event as InstallPromptEvent;
-    }
-
-    function markInstalled() {
-      installPrompt.current = null;
-      setInstalled(true);
-      setInstructionsOpen(false);
-    }
-
-    window.addEventListener("beforeinstallprompt", saveInstallPrompt);
-    window.addEventListener("appinstalled", markInstalled);
-
-    if (import.meta.env.PROD && "serviceWorker" in navigator) {
-      void navigator.serviceWorker.register("/sw.js").catch(() => {});
-    }
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", saveInstallPrompt);
-      window.removeEventListener("appinstalled", markInstalled);
-    };
-  }, []);
-
-  async function openInstall(event: React.MouseEvent<HTMLButtonElement>) {
-    const prompt = installPrompt.current;
-    if (!prompt) return;
-    event.preventDefault();
-    installPrompt.current = null;
-    try {
-      await prompt.prompt();
-    } catch {
-      setInstructionsOpen(true);
-    }
-  }
-
-  if (installed) return null;
-
-  return (
-    <Dialog open={instructionsOpen} onOpenChange={setInstructionsOpen}>
-      <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm" onClick={(event) => void openInstall(event)} className="gap-1 px-2 text-xs sm:gap-1.5 sm:px-3 sm:text-sm">
-          <Smartphone className="h-4 w-4" aria-hidden="true" />
-          安裝 App
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="z-[80]">
-        <DialogTitle>安裝西屋寵物 App</DialogTitle>
-        <DialogDescription>將西屋寵物加入主畫面，下次可直接點圖示開啟。</DialogDescription>
-        <ul className="space-y-3 text-sm">
-          <li><strong>iPhone／iPad Safari</strong><br />點選「分享」，選「加入主畫面」，開啟「以網頁 App 打開」（若有顯示），再點「加入」。</li>
-          <li><strong>Android Chrome</strong><br />打開右上方 ⋮，選「安裝應用程式」或「加到主畫面」。</li>
-          <li><strong>電腦 Chrome／Edge</strong><br />使用網址列右側的安裝圖示，也可從瀏覽器選單尋找安裝選項。</li>
-        </ul>
-      </DialogContent>
-    </Dialog>
-  );
+  const {locale}=useI18n();
+  const installPrompt=useRef<InstallPromptEvent|null>(null);
+  const [instructionsOpen,setInstructionsOpen]=useState(false);
+  const [installed,setInstalled]=useState(()=>!!(navigator as Navigator & { standalone?: boolean }).standalone || window.matchMedia('(display-mode: standalone)').matches);
+  useEffect(()=>{
+    const save=(e:Event)=>{e.preventDefault();installPrompt.current=e as InstallPromptEvent;};
+    const mark=()=>{installPrompt.current=null;setInstalled(true);setInstructionsOpen(false);};
+    window.addEventListener('beforeinstallprompt',save);window.addEventListener('appinstalled',mark);
+    if(import.meta.env.PROD&&'serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js').catch(()=>{});
+    return ()=>{window.removeEventListener('beforeinstallprompt',save);window.removeEventListener('appinstalled',mark);};
+  },[]);
+  async function install(e:React.MouseEvent<HTMLButtonElement>){const prompt=installPrompt.current;if(!prompt)return;e.preventDefault();installPrompt.current=null;try{await prompt.prompt();}catch{setInstructionsOpen(true);}}
+  if(installed)return null;
+  const label=tr(locale,'安裝 App','Install app','ติดตั้งแอป');
+  return <Dialog open={instructionsOpen} onOpenChange={setInstructionsOpen}>
+    <DialogTrigger asChild><Button type="button" variant="outline" size="sm" className="h-9 gap-1.5 whitespace-nowrap text-xs" onClick={e=>void install(e)}><Smartphone size={15}/>{label}</Button></DialogTrigger>
+    <DialogContent className="z-[80] max-w-[calc(100vw-2rem)] sm:max-w-lg">
+      <DialogTitle>{label}</DialogTitle>
+      <DialogDescription>{tr(locale,'將西屋寵物加入主畫面，下次可直接開啟。','Add Westinghouse Pet to your home screen for quick access.','เพิ่ม Westinghouse Pet ลงในหน้าจอหลักเพื่อเปิดใช้งานได้รวดเร็ว')}</DialogDescription>
+      <ul className="space-y-3 text-sm"><li><strong>iPhone / iPad Safari</strong><p>{tr(locale,'分享 → 加入主畫面 → 加入。','Share → Add to Home Screen → Add.','แชร์ → เพิ่มไปยังหน้าจอโฮม → เพิ่ม')}</p></li><li><strong>Android Chrome</strong><p>{tr(locale,'瀏覽器選單 → 安裝應用程式／加到主畫面。','Browser menu → Install app / Add to Home screen.','เมนูเบราว์เซอร์ → ติดตั้งแอป / เพิ่มลงในหน้าจอหลัก')}</p></li><li><strong>Chrome / Edge</strong><p>{tr(locale,'使用網址列或瀏覽器選單的安裝選項。','Use the install option in the address bar or browser menu.','ใช้ตัวเลือกติดตั้งในแถบที่อยู่หรือเมนูเบราว์เซอร์')}</p></li></ul>
+    </DialogContent>
+  </Dialog>;
 }
 
-export function Header({
-  logoText = "Westinghouse Pet", wishlistCount = 0,
-  isAuthenticated = false, userName,
-  onSearch, onCartClick, onWishlistClick, onLoginClick, onAccountClick, onMobileMenuToggle,
-  className, ...props
-}: HeaderProps) {
-  const { cartCount } = useCart();
+export function Header({logoText='Westinghouse Pet',wishlistCount=0,isAuthenticated=false,userName,onSearch,onCartClick,onWishlistClick,onLoginClick,onAccountClick,onMobileMenuToggle,className,...props}: HeaderProps) {
   const {locale,setLocale,t}=useI18n();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [expandedMobileL1, setExpandedMobileL1] = useState<string | null>(null);
-  const [expandedMobileL2, setExpandedMobileL2] = useState<string | null>(null);
-
-  const handleMobileToggle = useCallback((open: boolean) => {
-    setMobileMenuOpen(open);
-    setExpandedMobileL1(null);
-    setExpandedMobileL2(null);
-    onMobileMenuToggle?.(open);
-  }, [onMobileMenuToggle]);
-
-  const handleSearchSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) onSearch?.(searchQuery.trim());
-  }, [searchQuery, onSearch]);
-
-  return (
-    <header className={cn("fixed top-0 left-0 right-0 z-[60] border-b border-border bg-background/95 backdrop-blur-md", className)} {...props}>
-      {/* Top Bar */}
-      <div className="hidden items-center justify-between border-b border-border/50 bg-neutral-50 px-4 py-1.5 text-xs text-muted-foreground md:flex lg:px-8">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1"><PawPrint className="h-3 w-3 text-pet-paw" />Westinghouse Pet Taiwan</span>
-          <span className="hidden lg:inline">|</span>
-          <span className="hidden lg:inline">產品上市資訊待公佈</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span>客服聯絡方式待公佈</span>
-          <span className="hidden lg:inline">|</span>
-          <span className="hidden lg:inline">週一至週五 09:00-18:00</span>
-        </div>
-      </div>
-
-      {/* Main Header */}
-      <div className="flex items-center justify-between px-4 py-3 lg:px-8">
-        <Link to="/" className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground transition-colors hover:text-primary">
-          <PawPrint className="h-7 w-7 text-primary" />
-          <span className="hidden sm:inline">{logoText}</span>
+  const {cartCount}=useCart();
+  const {products}=useProductPricing();
+  const navigate=useNavigate();
+  const location=useLocation();
+  const [mobileOpen,setMobileOpen]=useState(false);
+  const [search,setSearch]=useState('');
+  const [searchOpen,setSearchOpen]=useState(false);
+  const [desktopProducts,setDesktopProducts]=useState(false);
+  const navRef=useRef<HTMLElement|null>(null);
+  useEffect(()=>{setMobileOpen(false);setDesktopProducts(false);setSearchOpen(false);},[location.pathname,location.search]);
+  useEffect(()=>{const outside=(e:PointerEvent)=>{if(e.target instanceof Node&&!navRef.current?.contains(e.target)){setDesktopProducts(false);setMobileOpen(false);setSearchOpen(false);}};const esc=(e:KeyboardEvent)=>{if(e.key==='Escape'){setDesktopProducts(false);setMobileOpen(false);setSearchOpen(false);}};document.addEventListener('pointerdown',outside);document.addEventListener('keydown',esc);return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',esc);};},[]);
+  const toggle=(open:boolean)=>{setMobileOpen(open);onMobileMenuToggle?.(open);};
+  const close=()=>{toggle(false);setDesktopProducts(false);setSearchOpen(false);};
+  const topLinks=[{label:t('guides'),href:'/solutions'},{label:t('brand'),href:'/brand'},{label:t('reviews'),href:'/reviews'},{label:t('faq'),href:'/faq'},{label:t('contact'),href:'/contact'}];
+  const categories=[{label:t('feeders'),href:'/products/feeders',kind:'feeder'},{label:t('fountains'),href:'/products/water-dispensers',kind:'water'}];
+  const submit=(e:React.FormEvent)=>{e.preventDefault();const q=search.trim();if(!q)return; if(onSearch)onSearch(q);else navigate('/products?q='+encodeURIComponent(q));close();};
+  const productLinks=(mobile:boolean)=><><Link to="/products" onClick={close} className="block rounded-lg px-3 py-2.5 font-semibold hover:bg-muted">{t('products')}</Link>{categories.map(cat=><div key={cat.href} className="rounded-xl bg-neutral-50 p-2"><Link to={cat.href} onClick={close} className="block rounded-lg px-3 py-2 text-sm font-semibold hover:bg-white">{cat.label}</Link>{products.filter(p=>p.category===cat.kind).map(p=><Link key={p.slug} to={`/products/${p.slug}`} onClick={close} className="block rounded px-3 py-2 text-sm text-muted-foreground hover:bg-white hover:text-primary">{productBySku(p.slug,locale)?.name??p.name}</Link>)}</div>)}<Link to="/products/accessories" onClick={close} className={cn('block rounded-lg px-3 py-2.5 text-sm hover:bg-muted',!mobile&&'col-span-full')}>{tr(locale,'耗材配件','Accessories','อุปกรณ์เสริม')}</Link></>;
+  return <header ref={navRef} className={cn('sticky top-0 z-[60] border-b border-border bg-white/95 shadow-sm backdrop-blur-md',className)} {...props}>
+    <div className="mx-auto max-w-container-lg px-3 sm:px-6 lg:px-8">
+      <div className="flex min-h-[64px] items-center justify-between gap-2 py-2">
+        <Link to="/" onClick={close} aria-label="Westinghouse Pet" className="min-w-0 flex-1 text-left leading-none text-[#10253c]">
+          <span className="block text-[clamp(14px,4.5vw,18px)] font-bold tracking-[-.045em] sm:text-2xl">{logoText.replace(/ Pet$/,'')}</span>
+          <span className="mt-1 block text-[10px] font-semibold tracking-[.18em] text-muted-foreground sm:text-xs">PET TAIWAN{locale==='zh-TW'?' · 西屋寵物家電':''}</span>
         </Link>
+        <div className="flex min-w-0 items-center justify-end gap-1 sm:gap-2">
+          <select aria-label="Language" value={locale} onChange={e=>setLocale(e.target.value as Locale)} className="h-9 max-w-[86px] rounded-md border border-border bg-white px-1 text-xs sm:max-w-none sm:px-2"><option value="zh-TW">繁中</option><option value="en">EN</option><option value="th">ไทย</option></select>
 
-        {/* Desktop MegaMenu */}
-        <NavigationMenu className="hidden lg:flex z-[70]">
-          <NavigationMenuList className="gap-0.5">
-            {defaultNavItems.map((item) =>
-              item.children?.length ? (
-                <NavigationMenuItem key={item.label}>
-                  <NavigationMenuTrigger className="text-sm font-medium px-3 py-2 h-auto">{item.label}</NavigationMenuTrigger>
-                  <NavigationMenuContent className="z-[70]">
-                    <MegaMenuPanel item={item} />
-                  </NavigationMenuContent>
-                </NavigationMenuItem>
-              ) : (
-                <NavigationMenuItem key={item.label}>
-                  <Link to={item.href} className={cn(navigationMenuTriggerStyle(), "text-sm font-medium px-3 py-2 h-auto")}>
-                    {item.label}
-                  </Link>
-                </NavigationMenuItem>
-              )
-            )}
-          </NavigationMenuList>
-        </NavigationMenu>
-
-        {/* Right Actions */}
-        <div className="flex items-center gap-1 sm:gap-2">
-          <InstallAppButton />
-          <select aria-label="Language" value={locale} onChange={e=>setLocale(e.target.value as typeof locale)} className="max-w-[112px] rounded-md border border-border bg-background px-1 py-2 text-xs sm:max-w-none sm:px-2">
-            <option value="zh-TW">繁體中文</option><option value="en">English</option><option value="th">ไทย</option>
-          </select>
-          <form onSubmit={handleSearchSubmit} className={cn("flex items-center overflow-hidden transition-all duration-300", searchOpen ? "w-48 opacity-100 sm:w-64" : "w-0 opacity-0")}>
-            <Input type="text" placeholder="搜尋商品..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-9 text-sm" aria-label="搜尋商品" />
-          </form>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setSearchOpen((p) => !p)} aria-label={searchOpen ? "關閉搜尋" : "開啟搜尋"}>
-            {searchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-          </Button>
-          <Button variant="ghost" size="icon" className="relative hidden h-9 w-9 sm:flex" onClick={onWishlistClick} aria-label="收藏清單">
-            <Heart className="h-[18px] w-[18px]" />
-            {wishlistCount > 0 && <Badge variant="destructive" className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center p-0 text-[10px]">{wishlistCount}</Badge>}
-          </Button>
-          <Button variant="ghost" size="icon" className="relative h-9 w-9" onClick={onCartClick} aria-label={t("cart")}>
-            <ShoppingCart className="h-[18px] w-[18px]" />
-            {cartCount > 0 && <Badge variant="destructive" className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center p-0 text-[10px]">{cartCount}</Badge>}
-          </Button>
-          {isAuthenticated ? (
-            <Button variant="ghost" size="sm" className="hidden items-center gap-1.5 text-sm md:flex" onClick={onAccountClick}>
-              <User className="h-4 w-4" /><span className="max-w-[80px] truncate">{userName}</span>
-            </Button>
-          ) : (
-            <Button variant="ghost" size="sm" className="hidden items-center gap-1.5 text-sm md:flex" onClick={onLoginClick}>
-              <User className="h-4 w-4" />登入
-            </Button>
-          )}
-          <Button variant="ghost" size="icon" className="h-9 w-9 lg:hidden" onClick={() => handleMobileToggle(!mobileMenuOpen)} aria-label={mobileMenuOpen ? "關閉選單" : "開啟選單"}>
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+          <Button type="button" variant="ghost" size="icon" className="hidden h-9 w-9 shrink-0 md:flex" aria-label={tr(locale,'搜尋商品','Search products','ค้นหาสินค้า')} aria-expanded={searchOpen} onClick={()=>setSearchOpen(v=>!v)}><Search size={19}/></Button>
+          {onWishlistClick&&<Button type="button" variant="ghost" size="icon" className="relative hidden md:flex" onClick={onWishlistClick} aria-label={tr(locale,'收藏清單','Wishlist','รายการโปรด')}><Heart size={18}/>{wishlistCount>0&&<span className="absolute right-0 top-0 text-xs">{wishlistCount}</span>}</Button>}
+          {(isAuthenticated?onAccountClick:onLoginClick)&&<Button type="button" variant="ghost" className="hidden md:flex" onClick={isAuthenticated?onAccountClick:onLoginClick}><User size={16}/>{isAuthenticated?userName:tr(locale,'登入','Sign in','เข้าสู่ระบบ')}</Button>}
+          <Button type="button" variant="ghost" size="icon" className="relative h-9 w-9 shrink-0" onClick={onCartClick??(()=>window.dispatchEvent(new Event('wpet:open-cart')))} aria-label={t('cart')}><ShoppingCart size={20}/>{cartCount>0&&<span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-primary px-1 text-[10px] font-bold text-white">{cartCount}</span>}</Button>
+          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 lg:hidden" aria-label={tr(locale,'選單','Menu','เมนู')} aria-expanded={mobileOpen} aria-controls="wpet-mobile-nav" onClick={()=>toggle(!mobileOpen)}>{mobileOpen?<X size={21}/>:<Menu size={21}/>}</Button>
         </div>
       </div>
-
-      {/* Mobile Drawer — 3-tier */}
-      <div className={cn("overflow-hidden border-t border-border bg-background transition-all duration-300 lg:hidden", mobileMenuOpen ? "max-h-[85vh] opacity-100" : "max-h-0 opacity-0")}>
-        <nav className="max-h-[75vh] overflow-y-auto px-4 py-3">
-          <form onSubmit={handleSearchSubmit} className="mb-4">
-            <div className="flex gap-2">
-              <Input type="text" placeholder="搜尋商品..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-10 text-sm" aria-label="搜尋商品" />
-              <Button type="submit" size="sm" className="h-10 px-4"><Search className="h-4 w-4" /></Button>
-            </div>
-          </form>
-
-          <ul className="space-y-1">
-            {defaultNavItems.map((item) => (
-              <li key={item.label}>
-                {item.children?.length ? (
-                  <div className="rounded-lg border border-border">
-                    <button type="button" onClick={() => setExpandedMobileL1((prev) => prev === item.label ? null : item.label)} className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-medium transition-colors hover:bg-accent">
-                      {item.label}
-                      <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", expandedMobileL1 === item.label && "rotate-180")} />
-                    </button>
-                    <div className={cn("overflow-hidden transition-all duration-200", expandedMobileL1 === item.label ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0")}>
-                      <ul className="space-y-0.5 border-t border-border bg-neutral-50 px-2 py-2">
-                        {item.children.map((child) => (
-                          <li key={child.label}>
-                            {child.children?.length ? (
-                              <div className="rounded-md border border-border/50 overflow-hidden">
-                                <button type="button" onClick={() => setExpandedMobileL2((prev) => prev === child.label ? null : child.label)} className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-white hover:text-foreground">
-                                  <span>{child.label}{child.description && <span className="block text-[11px] text-muted-foreground/60">{child.description}</span>}</span>
-                                  <ChevronRight className={cn("h-3.5 w-3.5 transition-transform duration-200", expandedMobileL2 === child.label && "rotate-90")} />
-                                </button>
-                                <div className={cn("overflow-hidden transition-all duration-200", expandedMobileL2 === child.label ? "max-h-60 opacity-100" : "max-h-0 opacity-0")}>
-                                  <ul className="border-t border-border/50 bg-white px-2 py-1.5 space-y-0.5">
-                                    {child.children.map((grand) => (
-                                      <li key={grand.label}>
-                                        <Link to={grand.href} onClick={() => handleMobileToggle(false)} className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground">
-                                          <span>{grand.label}</span>
-                                          {grand.tag && <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-primary/30 text-primary">{grand.tag}</Badge>}
-                                        </Link>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              </div>
-                            ) : (
-                              <Link to={child.href} onClick={() => handleMobileToggle(false)} className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-white hover:text-foreground">
-                                <span>{child.label}{child.description && <span className="block text-[11px] text-muted-foreground/60">{child.description}</span>}</span>
-                              </Link>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                ) : (
-                  <Link to={item.href} onClick={() => handleMobileToggle(false)} className="block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors hover:bg-accent">
-                    {item.label}
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-4 space-y-2 border-t border-border pt-4">
-            {isAuthenticated ? (
-              <Button variant="outline" className="w-full justify-start gap-2" onClick={onAccountClick}><User className="h-4 w-4" />我的帳號 ({userName})</Button>
-            ) : (
-              <Button variant="outline" className="w-full justify-start gap-2" onClick={onLoginClick}><User className="h-4 w-4" />登入 / 註冊</Button>
-            )}
-            <Button variant="outline" className="w-full justify-start gap-2" onClick={onWishlistClick}>
-              <Heart className="h-4 w-4" />收藏清單
-              {wishlistCount > 0 && <Badge variant="secondary" className="ml-auto">{wishlistCount}</Badge>}
-            </Button>
-          </div>
-        </nav>
-      </div>
-    </header>
-  );
-}
-
-/* ================================================================ */
-/*  MEGA MENU PANEL — Desktop 3-tier                                 */
-/* ================================================================ */
-
-function MegaMenuPanel({ item }: { item: NavItem }) {
-  if (!item.children?.length) return null;
-
-  return (
-    <div className="grid w-[680px] grid-cols-12 gap-0">
-      <div className="col-span-8 p-5 space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{item.label}</p>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3">
-          {item.children.map((child) => (
-            <div key={child.label}>
-              <Link to={child.href} className="group flex items-center gap-1 text-sm font-semibold text-foreground hover:text-primary transition-colors">
-                {child.label}
-                <ChevronRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-              </Link>
-              {child.description && <p className="text-[11px] text-muted-foreground/70 mt-0.5">{child.description}</p>}
-              {child.children?.length && (
-                <ul className="mt-1.5 space-y-0.5">
-                  {child.children.map((grand) => (
-                    <li key={grand.label}>
-                      <Link to={grand.href} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors py-0.5">
-                        {grand.tag ? (
-                          <Badge variant="outline" className="text-[9px] h-4 px-1 border-primary/30 text-primary leading-none">{grand.tag}</Badge>
-                        ) : <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />}
-                        {grand.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
+      <div className="flex items-center justify-between gap-2 border-t border-border/50 py-1.5 text-xs"><span className="min-w-0 text-muted-foreground">{storefront.launch[locale]}</span><div className="shrink-0"><InstallAppButton/></div></div>
+      <nav aria-label={tr(locale,'主導覽','Main navigation','เมนูหลัก')} className="hidden items-center justify-between gap-3 border-t border-border/50 py-2 lg:flex">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm font-medium">
+          <div className="relative"><button type="button" aria-expanded={desktopProducts} className="flex items-center gap-1 rounded-lg px-2 py-2 hover:bg-muted" onClick={()=>setDesktopProducts(v=>!v)}>{t('products')}<ChevronDown size={15}/></button>{desktopProducts&&<div className="absolute left-0 top-full grid w-[min(650px,90vw)] grid-cols-2 gap-3 rounded-2xl border bg-white p-4 shadow-xl">{productLinks(false)}</div>}</div>
+          {topLinks.map(item=><Link key={item.href} to={item.href} onClick={close} className="rounded-md px-1 py-2 hover:text-primary" aria-current={location.pathname===item.href?'page':undefined}>{item.label}</Link>)}
         </div>
-      </div>
-
-      <div className="col-span-4 bg-accent/30 border-l border-border p-5 flex flex-col">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">推薦</p>
-        <Link to="/products/m81-fresh-food-feeder" className="group rounded-lg bg-background p-3 shadow-sm hover:shadow-md transition-shadow border border-border/50 mb-3">
-          <p className="text-xs text-muted-foreground mb-1">旗艦新品</p>
-          <p className="text-sm font-semibold group-hover:text-primary transition-colors">M81 鮮濕糧智慧餵食器</p>
-          <p className="text-xs text-muted-foreground mt-1">支援鮮食與乾糧混合餵食</p>
-        </Link>
-        <Link to="/products/d11ba-water-dispenser" className="group rounded-lg bg-background p-3 shadow-sm hover:shadow-md transition-shadow border border-border/50">
-          <p className="text-xs text-muted-foreground mb-1">熱銷冠軍</p>
-          <p className="text-sm font-semibold group-hover:text-primary transition-colors">D11-BA 智慧寵物飲水機</p>
-          <p className="text-xs text-muted-foreground mt-1">靜音湧泉循環過濾</p>
-        </Link>
-        <div className="mt-auto pt-4 border-t border-border/50">
-          <Link to={item.href} className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-            查看全部{item.label}<ChevronDown className="h-3 w-3 -rotate-90" />
-          </Link>
-        </div>
-      </div>
+      </nav>
+      {searchOpen&&<form onSubmit={submit} className="flex items-center gap-2 border-t py-3"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={tr(locale,'輸入機型或名稱','Search model or name','ค้นหารุ่นหรือชื่อสินค้า')} className="min-w-0 flex-1 rounded-md border px-3 py-2 text-sm"/><Button type="submit"><Search size={16}/></Button></form>}
     </div>
-  );
+    {mobileOpen&&<nav id="wpet-mobile-nav" className="absolute inset-x-0 top-full max-h-[65vh] overflow-y-auto border-b bg-white p-4 shadow-xl lg:hidden" aria-label={tr(locale,'手機導覽','Mobile navigation','เมนูมือถือ')}>
+      <form onSubmit={submit} className="mb-3 flex gap-2"><input value={search} onChange={e=>setSearch(e.target.value)} placeholder={tr(locale,'搜尋機型','Search models','ค้นหารุ่น')} className="min-w-0 flex-1 rounded-md border px-3 text-sm"/><Button type="submit"><Search size={16}/></Button></form>
+      <div className="space-y-2">{productLinks(true)}{topLinks.map(item=><Link key={item.href} to={item.href} onClick={close} className="block rounded-lg border px-3 py-3 text-sm font-medium hover:bg-muted">{item.label}</Link>)}</div>
+    </nav>}
+  </header>;
 }
-
-Header.displayName = "Header";
+Header.displayName='Header';

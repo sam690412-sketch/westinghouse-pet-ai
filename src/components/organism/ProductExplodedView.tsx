@@ -29,7 +29,7 @@ export function ProductExplodedView({slug}: ProductExplodedViewProps) {
     <section className="container-section py-12" aria-label={explodedLabels.title[locale]}>
       <h2 className="text-center text-3xl font-bold lg:text-4xl">{explodedLabels.title[locale]}</h2>
       <p className="mt-2 text-center text-sm text-muted-foreground">{explodedLabels.note[locale]}</p>
-      <div className="mt-8 grid items-start gap-8 lg:grid-cols-[3fr_2fr]">
+      <div className="mt-6 grid items-start gap-4 lg:mt-8 lg:gap-8 lg:grid-cols-[3fr_2fr]">
         <div className="flex items-center justify-center rounded-2xl bg-neutral-950 p-3 sm:p-6" onPointerMove={move} onPointerLeave={() => setTilt({x:0,y:0})}>
           <div className="relative mx-auto w-full max-w-[520px] overflow-hidden rounded-xl" style={{aspectRatio: `${data.width} / ${data.height}`}}>
             {failed ? <p className="flex h-full items-center justify-center p-6 text-center text-white">{explodedLabels.unavailable[locale]}</p> : (
@@ -49,16 +49,16 @@ export function ProductExplodedView({slug}: ProductExplodedViewProps) {
             )}
           </div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-5 sm:p-7">
+        <div className="rounded-2xl border border-border bg-card p-3 sm:p-7">
           <p className="mb-4 text-sm text-muted-foreground">{explodedLabels.select[locale]}</p>
-          <div className="grid gap-2">
+          <div className="grid grid-cols-2 gap-1.5 lg:grid-cols-1 lg:gap-2">
             {data.hotspots.map((hotspot,i)=>(
               <button key={i} type="button" disabled={failed} aria-pressed={active===i}
-                className={`rounded-lg border p-3 text-left transition-colors ${active===i ? 'border-orange-600 bg-orange-50 text-neutral-950' : 'border-border hover:border-orange-300'}`}
+                className={`rounded-lg border px-2 py-2.5 text-left text-xs leading-snug transition-colors sm:text-sm lg:p-3 ${active===i ? 'border-orange-600 bg-orange-50 text-neutral-950' : 'border-border hover:border-orange-300'}`}
                 onClick={()=>{setTilt({x:0,y:0});setActive(active===i?null:i);}}>{i+1}. {hotspot.title[locale]}</button>
             ))}
           </div>
-          <div aria-live="polite" className="mt-5 min-h-[100px] rounded-xl bg-muted/50 p-4">
+          <div aria-live="polite" className="mt-3 min-h-[72px] lg:mt-5 lg:min-h-[100px] rounded-xl bg-muted/50 p-4">
             {part ? <><h3 className="font-semibold">{part.title[locale]}</h3><p className="mt-2 text-sm leading-relaxed">{part.description[locale]}</p></> : <p className="text-sm text-muted-foreground">{explodedLabels.select[locale]}</p>}
           </div>
           <button type="button" className="mt-4 rounded-lg border px-4 py-2 text-sm font-medium hover:border-orange-600" onClick={reset}>{explodedLabels.reset[locale]}</button>

@@ -1,244 +1,59 @@
-import { IS_LIVE_STORE } from "@/config/storeConfig";
-import { useI18n } from "@/i18n";
-import { galleryFor } from "@/data/productGallery";
-import { ShoppingCart, Zap, Truck, ShieldCheck, Award, AlertTriangle, Check, RotateCcw, Cat, Clock, Heart } from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { CMSProduct } from "@/types/cms";
-import { PriceDisplay } from "@/components/atomic/PriceDisplay";
-import { StockStatus } from "@/components/atomic/StockStatus";
-import { Heading, Text } from "@/components/atomic/Typography";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { QuantitySelector } from "@/components/atomic/QuantitySelector";
-import { useCart } from "@/hooks/useCart";
-import { useState } from "react";
+import { useState } from 'react';
+import { ShoppingCart, AlertTriangle, Check, CalendarClock, PackageCheck } from 'lucide-react';
+import { IS_LIVE_STORE } from '@/config/storeConfig';
+import { useI18n } from '@/i18n';
+import { storefront, tr } from '@/i18n/storefront';
+import { galleryFor } from '@/data/productGallery';
+import { cn } from '@/lib/utils';
+import type { CMSProduct } from '@/types/cms';
+import { StorefrontPrice } from '@/components/atomic/StorefrontPrice';
+import { StockStatus } from '@/components/atomic/StockStatus';
+import { Button } from '@/components/ui/button';
+import { QuantitySelector } from '@/components/atomic/QuantitySelector';
+import { useCart } from '@/hooks/useCart';
 
-interface ProductHeroSectionProps {
-  product: CMSProduct;
-}
+interface ProductHeroSectionProps { product: CMSProduct; }
 
-/** Scenario badges by product slug */
-const productScenarios: Record<string, { for: string; scene: string; bundle: string }> = {
-  "m81-fresh-food-feeder": {
-    for: "餵食鮮食/混糧的毛孩",
-    scene: "經常出差、加班的飼主",
-    bundle: "d11ba-water-dispenser",
-  },
-  "m12-panoramic-feeder": {
-    for: "多貓家庭、需要監控的飼主",
-    scene: "希望隨時看見毛孩的上班族",
-    bundle: "d11ba-water-dispenser",
-  },
-  "m31-gashapon-feeder": {
-    for: "喜歡互動玩耍的貓咪",
-    scene: "想讓餵食變有趣的飼主",
-    bundle: "d11ba-water-dispenser",
-  },
-  "d11ba-water-dispenser": {
-    for: "不愛喝水的貓咪、腎貓",
-    scene: "關注毛孩飲水健康的飼主",
-    bundle: "m81-fresh-food-feeder",
-  },
-  "d61-stainless-dispenser": {
-    for: "追求抗菌安全的飼主",
-    scene: "醫療級材質需求的敏感體質貓",
-    bundle: "m81-fresh-food-feeder",
-  },
-};
-
-export function ProductHeroSection({ product }: ProductHeroSectionProps) {
-  const { t } = useI18n();
-  const [quantity, setQuantity] = useState(1);
-  const [selectedImage, setSelectedImage] = useState(0);
-  const [added, setAdded] = useState(false);
-  const { addItem, isLoading: cartLoading, error: cartError } = useCart();
-
-  const isOutOfStock = IS_LIVE_STORE && product.stock_status === "out_of_stock";
-  const isLowStock = IS_LIVE_STORE && product.stock_status === "low_stock";
-  const isPreorder = !IS_LIVE_STORE || product.stock_status === "pre_order";
-
-  const galleryImages = galleryFor(product.slug, product.name, product.hero_image_url);
-
-
-  const discount = product.compare_at_price
-    ? Math.round((1 - product.price / product.compare_at_price) * 100)
-    : 0;
-
-  const scenario = productScenarios[product.slug];
-
-  return (
-    <section className="mx-auto max-w-container-lg px-4 py-6 sm:px-6 lg:px-8 lg:py-10" aria-label="商品資訊">
-      <div className="grid gap-6 lg:grid-cols-2 lg:gap-10">
-        {/* Image Gallery */}
-        <div className="space-y-3">
-          <div className="relative aspect-square lg:aspect-auto lg:h-[560px] overflow-hidden rounded-xl border border-border bg-neutral-100">
-            <img
-              src={galleryImages[selectedImage]?.url || galleryImages[0]?.url}
-              alt={galleryImages[selectedImage]?.alt || product.name}
-              className="h-full w-full object-contain"
-              onError={e => { if (!e.currentTarget.src.endsWith("/images/placeholder-product.jpg")) e.currentTarget.src = "/images/placeholder-product.jpg"; }}
-              loading="eager"
-            />
-            <div className="absolute left-3 top-3 flex flex-col gap-2">
-              {discount > 0 && <Badge className="bg-red-500 text-white border-0 text-xs">-{discount}%</Badge>}
-              {isPreorder && <Badge className="bg-amber-500 text-white border-0 text-xs">預購</Badge>}
-              {isLowStock && <Badge className="bg-amber-500 text-white border-0 text-xs">少量現貨</Badge>}
-            </div>
-          </div>
-          {galleryImages.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {galleryImages.map((img, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setSelectedImage(i)}
-                  className={cn(
-                    "h-14 w-14 sm:h-16 sm:w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-all",
-                    i === selectedImage ? "border-primary" : "border-border hover:border-primary/50"
-                  )}
-                  aria-label={`圖片 ${i + 1}`}
-                >
-                  <img src={img.url} alt={img.alt} className="h-full w-full object-cover" loading="lazy" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Product Info */}
-        <div className="flex flex-col">
-          {/* Category */}
-          <Text variant="overline" className="text-primary text-xs">
-            {product.category === "feeder" ? "智能餵食系列" : product.category === "water_dispenser" ? "循環飲水系列" : "寵物智能配件"}
-          </Text>
-
-          {/* Name */}
-          <Heading as="h1" variant="h2" className="mt-1 text-xl sm:text-2xl lg:text-3xl">
-            {product.name}
-          </Heading>
-
-          {/* Tagline */}
-          {product.tagline && (
-            <p className="mt-1 text-sm text-muted-foreground">{product.tagline}</p>
-          )}
-
-          {/* Rating */}
-          <div className="mt-2 flex items-center gap-2">
-
-          </div>
-
-          {/* Price — HIGH VISIBILITY */}
-          <div className="mt-4 flex items-baseline gap-3">
-            <PriceDisplay price={product.price} originalPrice={product.compare_at_price ?? undefined} size="lg" showDiscount />
-          </div>
-
-          {/* Stock + Shipping */}
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <StockStatus status={product.stock_status} />
-            {isLowStock && (
-              <span className="flex items-center gap-1 text-amber-600 font-medium">
-                <AlertTriangle className="h-3 w-3" />
-                僅剩 {product.stock_quantity} 件
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <Truck className="h-3 w-3" />
-              滿 NT$1,500 免運
-            </span>
-          </div>
-
-          {/* ===== CTA — PRIMARY, HIGH, STRONG ===== */}
-          <div className="mt-5 space-y-3">
-            {!isOutOfStock && (
-              <div className="flex items-center gap-3">
-                <Text variant="label" className="text-xs shrink-0">數量</Text>
-                <QuantitySelector value={quantity} onChange={setQuantity} max={isLowStock ? product.stock_quantity : 99} />
-              </div>
-            )}
-
-            {cartError && (
-              <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
-                {cartError}
-              </div>
-            )}
-
-            {added && (
-              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-600">
-                <Check className="h-4 w-4 shrink-0" />
-                已加入購物車
-              </div>
-            )}
-
-            {/* PRIMARY CTA */}
-            <Button
-              size="lg"
-              className="w-full gap-2 bg-primary text-primary-foreground shadow-md transition-all hover:shadow-lg hover:brightness-110 active:scale-[0.98] text-base font-semibold h-12"
-              disabled={isOutOfStock || cartLoading}
-              onClick={async () => {
-                try { await addItem(product.sku, quantity); setAdded(true); if (!IS_LIVE_STORE) window.dispatchEvent(new Event("wpet:open-cart")); setTimeout(() => setAdded(false), 2000); }
-                catch { /* error via cartError */ }
-              }}
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {isOutOfStock ? "暫時缺貨" : isPreorder ? t("add") : "先幫毛孩準備"}
-            </Button>
-
-            {/* SECONDARY CTA */}
-            {IS_LIVE_STORE && !isOutOfStock && (
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full gap-2 h-12 text-base border-primary/30 text-primary hover:bg-primary/5"
-                onClick={async () => {
-                  try { await addItem(product.sku, quantity); window.location.href = "#/checkout"; }
-                  catch { /* error */ }
-                }}
-              >
-                <Zap className="h-5 w-5" />
-                直接帶回家
-              </Button>
-            )}
-          </div>
-
-          {/* Trust bar — compact */}
-          <div className="mt-4 grid grid-cols-4 gap-2 rounded-lg border border-border bg-neutral-50 p-3">
-            {[
-              { icon: ShieldCheck, label: "一年保固" },
-              { icon: RotateCcw, label: "15天試用" },
-              { icon: Award, label: "正版授權" },
-              { icon: Clock, label: "快速出貨" },
-            ].map((b) => (
-              <div key={b.label} className="flex flex-col items-center gap-1 text-center">
-                <b.icon className="h-4 w-4 text-primary" />
-                <span className="text-[10px] text-muted-foreground leading-tight">{b.label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Scenario: 適合哪種毛孩 */}
-          {scenario && (
-            <div className="mt-4 rounded-lg bg-primary/5 border border-primary/10 p-3">
-              <p className="text-xs font-medium text-primary mb-1.5">適合誰？</p>
-              <div className="space-y-1">
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Cat className="h-3 w-3 text-primary/70" />
-                  {scenario.for}
-                </p>
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Heart className="h-3 w-3 text-primary/70" />
-                  {scenario.scene}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* SKU */}
-          <Text variant="caption" color="muted" className="mt-3">
-            SKU: {product.sku}
-          </Text>
-        </div>
-      </div>
-    </section>
-  );
+export function ProductHeroSection({product}: ProductHeroSectionProps) {
+ const {locale,t}=useI18n();
+ const [quantity,setQuantity]=useState(1);
+ const [selectedImage,setSelectedImage]=useState(0);
+ const [failedImages,setFailedImages]=useState<string[]>([]);
+ const [added,setAdded]=useState(false);
+ const {addItem,isLoading:cartLoading,error:cartError}=useCart();
+ const isOutOfStock=IS_LIVE_STORE&&product.stock_status==='out_of_stock';
+ const isLowStock=IS_LIVE_STORE&&product.stock_status==='low_stock';
+ const isPreorder=!IS_LIVE_STORE||product.stock_status==='pre_order';
+ const galleryImages=galleryFor(product.slug,product.name,product.hero_image_url);
+ const image=galleryImages[selectedImage]??galleryImages[0];
+ const selectImage=(i:number)=>{setSelectedImage(i);setFailedImages(old=>old.filter(url=>url!==galleryImages[i]?.url));};
+ const markFailed=(url:string)=>setFailedImages(old=>old.includes(url)?old:[...old,url]);
+ const roles=[tr(locale,'主圖','Main view','ภาพหลัก'),tr(locale,'生活情境','Lifestyle','ภาพการใช้งาน'),tr(locale,'側面圖','Side view','ภาพด้านข้าง')];
+ const add=async()=>{try{await addItem(product.sku,quantity);setAdded(true);if(!IS_LIVE_STORE)window.dispatchEvent(new Event('wpet:open-cart'));}catch{/* CartProvider retains the failure. */}};
+ return <section className="mx-auto max-w-container-lg px-4 py-6 sm:px-6 lg:px-8 lg:py-10" aria-label={tr(locale,'商品資訊','Product information','ข้อมูลสินค้า')}>
+  <div className="grid items-start gap-8 lg:grid-cols-2 lg:gap-12">
+   <div className="space-y-3">
+    <div className="relative aspect-square overflow-hidden rounded-2xl border border-border bg-white lg:aspect-auto lg:h-[560px]">
+     {image&&!failedImages.includes(image.url)?<img key={image.url} src={image.url} alt={`${product.name} · ${roles[selectedImage]??''}`} className="h-full w-full object-contain" onError={()=>markFailed(image.url)} loading="eager"/>:<div className="flex h-full flex-col items-center justify-center gap-3 p-5 text-center text-sm text-muted-foreground"><p>{storefront.imageUnavailable[locale]}</p><Button variant="outline" onClick={()=>selectImage(selectedImage)}>{tr(locale,'重新載入','Reload image','โหลดรูปภาพอีกครั้ง')}</Button></div>}
+     {isPreorder&&<span className="absolute left-3 top-3 rounded-full bg-[#10253c] px-3 py-1.5 text-xs font-semibold text-white">{t('reservation')}</span>}
+    </div>
+    {galleryImages.length>1&&<div className="flex flex-wrap gap-2">{galleryImages.map((img,i)=><button key={img.url} type="button" onClick={()=>selectImage(i)} aria-label={tr(locale,`圖片 ${i+1}`,`Image ${i+1}`,`รูปภาพ ${i+1}`)} aria-pressed={i===selectedImage} className={cn('flex min-w-[64px] flex-col items-center rounded-xl border p-1 text-[10px] sm:text-xs',i===selectedImage?'border-primary ring-1 ring-primary':'border-border')}><span className="block h-12 w-14 overflow-hidden sm:h-16 sm:w-20">{!failedImages.includes(img.url)?<img src={img.url} alt={`${product.name} ${roles[i]??''}`} className="h-full w-full object-contain" loading="lazy" onError={()=>markFailed(img.url)}/>:<PackageCheck className="m-auto mt-3 text-muted-foreground"/>}</span><span className="px-1 py-1 text-muted-foreground">{roles[i]??i+1}</span></button>)}</div>}
+   </div>
+   <div className="min-w-0 lg:py-5">
+    <p className="text-xs font-semibold uppercase tracking-widest text-primary">{product.category==='feeder'?t('feeders'):product.category==='water_dispenser'?t('fountains'):tr(locale,'耗材配件','Accessories','อุปกรณ์เสริม')}</p>
+    <h1 className="mt-3 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">{product.name}</h1>
+    {product.tagline&&<p className="mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">{product.tagline}</p>}
+    <div className="mt-6 border-y py-5"><StorefrontPrice slug={product.slug} price={product.price} originalPrice={product.compare_at_price??undefined} size="lg"/></div>
+    {IS_LIVE_STORE?<div className="mt-4"><StockStatus status={product.stock_status}/></div>:<div className="mt-4 flex items-start gap-3 rounded-xl border border-sky-100 bg-sky-50 p-4 text-sm text-[#10253c]"><CalendarClock size={20} className="mt-0.5 shrink-0"/><div><p className="font-semibold">{storefront.shipping[locale]}</p><p className="mt-1 leading-relaxed">{storefront.noPayment[locale]}</p></div></div>}
+    <div className="mt-5 space-y-3">
+     {!isOutOfStock&&<div className="flex items-center gap-3"><label className="text-sm font-medium">{t('qty')}</label><QuantitySelector value={quantity} onChange={setQuantity} max={isLowStock?product.stock_quantity:99}/></div>}
+     {cartError&&<p role="alert" className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700"><AlertTriangle size={17} className="shrink-0"/>{cartError}</p>}
+     {added&&<p role="status" className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700"><Check size={17}/>{tr(locale,'已加入清單','Added to your list','เพิ่มในรายการแล้ว')}</p>}
+     <Button type="button" size="lg" className="h-auto min-h-12 w-full gap-2 whitespace-normal py-3 text-base" disabled={isOutOfStock||cartLoading} onClick={()=>void add()}><ShoppingCart size={20}/>{isOutOfStock?tr(locale,'暫時缺貨','Out of stock','สินค้าหมด'):isPreorder?t('add'):tr(locale,'加入購物車','Add to cart','เพิ่มลงตะกร้า')}</Button>
+     {IS_LIVE_STORE&&!isOutOfStock&&<Button variant="outline" size="lg" className="w-full" onClick={async()=>{try{await addItem(product.sku,quantity);window.location.hash='#/checkout';}catch{/* show cart error */}}}>{t('checkout')}</Button>}
+    </div>
+    <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{storefront.terms[locale]}</p><p className="mt-3 text-xs text-muted-foreground">SKU: {product.sku}</p>
+   </div>
+  </div>
+ </section>;
 }

@@ -1,56 +1,17 @@
-import {useProductPricing} from '@/context/ProductPricingContext';
-import { PageLayout } from "@/components/PageLayout";
-import { Link } from "react-router";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-export default function ProductsPage() {
- const {products:dynamicProducts}=useProductPricing();
-  return (
-    <PageLayout
-      title="全部商品"
-      subtitle="Westinghouse Pet 全系列智能寵物用品"
-      breadcrumbs={[{ label: "全部商品" }]}
-    >
-      {/* Category Filter */}
-      <div className="flex flex-wrap gap-2 mb-8">
-        <Link to="/products">
-          <Button variant="default" size="sm">全部商品 ({dynamicProducts.length})</Button>
-        </Link>
-        <Link to="/products/feeders">
-          <Button variant="outline" size="sm">自動餵食器 ({dynamicProducts.filter(p => p.category === 'feeder').length})</Button>
-        </Link>
-        <Link to="/products/water-dispensers">
-          <Button variant="outline" size="sm">寵物飲水機 ({dynamicProducts.filter(p => p.category === 'water').length})</Button>
-        </Link>
-        <Link to="/products/accessories">
-          <Button variant="outline" size="sm">耗材配件</Button>
-        </Link>
-      </div>
+import { Link, useSearchParams } from 'react-router';
+import { PageLayout } from '@/components/PageLayout';
+import { CatalogGrid } from '@/components/organism/CatalogGrid';
+import { ProductComparison } from '@/components/organism/ProductComparison';
+import { useProductPricing } from '@/context/ProductPricingContext';
+import { useI18n } from '@/i18n';
+import { productBySku } from '@/i18n/products';
+import { storefront, tr } from '@/i18n/storefront';
 
-      {/* Product Grid */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {dynamicProducts.map((p) => (
-          <Link key={p.slug} to={`/products/${p.slug}`} className="group rounded-xl border border-border bg-card p-4 transition-all hover:shadow-lg hover:border-primary/30">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-muted mb-3">
-              <img src={p.image} alt={p.name} className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105" />
-              {p.badge && <Badge className="absolute top-2 left-2 bg-primary text-white">{p.badge}</Badge>}
-            </div>
-            <h3 className="font-semibold text-lg group-hover:text-primary transition-colors">{p.name}</h3>
-            <p className="text-sm text-muted-foreground mt-1">{p.tagline}</p>
-            <div className="flex items-baseline gap-2 mt-2">
-              <span className="text-lg font-bold text-primary">NT${(p.price / 100).toLocaleString()}</span>
-              {p.originalPrice && <span className="text-sm text-muted-foreground line-through">NT${(p.originalPrice / 100).toLocaleString()}</span>}
-            </div>
-            <ul className="mt-3 space-y-1">
-              {p.features.slice(0, 3).map((f) => (
-                <li key={f} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <span className="h-1 w-1 rounded-full bg-primary/60" />{f}
-                </li>
-              ))}
-            </ul>
-          </Link>
-        ))}
-      </div>
-    </PageLayout>
-  );
+export function ProductCatalogPage({category}:{category?:'feeder'|'water'}){
+ const {products}=useProductPricing();const {locale,t}=useI18n();const [params]=useSearchParams();const query=params.get('q')?.trim()??'';const needle=query.toLowerCase();
+ const title=category==='feeder'?t('feeders'):category==='water'?t('fountains'):t('products');
+ const items=products.filter(p=>!category||p.category===category).filter(p=>!needle||[p.slug,p.name,p.tagline,productBySku(p.slug,locale)?.name??'',productBySku(p.slug,locale)?.tagline??''].some(text=>text.toLowerCase().includes(needle)));
+ const links=[{label:t('products'),href:'/products',active:!category},{label:t('feeders'),href:'/products/feeders',active:category==='feeder'},{label:t('fountains'),href:'/products/water-dispensers',active:category==='water'},{label:tr(locale,'耗材配件','Accessories','อุปกรณ์เสริม'),href:'/products/accessories',active:false}];
+ return <PageLayout title={title} subtitle={storefront.collection[locale]} breadcrumbs={[{label:t('products'),href:category?'/products':undefined},...(category?[{label:title}]:[])]}><nav className="mb-6 flex flex-wrap gap-2">{links.map(l=><Link key={l.href} to={l.href} aria-current={l.active?'page':undefined} className={`rounded-full border px-4 py-2 text-sm ${l.active?'bg-primary text-white':'bg-white hover:bg-muted'}`}>{l.label}</Link>)}</nav>{query&&<div className="mb-5 flex items-center gap-3"><span className="min-w-0 break-all text-sm">{tr(locale,'搜尋結果','Search results','ผลการค้นหา')}: {query}</span><Link to="/products" className="shrink-0 text-sm text-primary underline">{tr(locale,'清除','Clear','ล้าง')}</Link></div>}<CatalogGrid items={items}/>{category&&<ProductComparison/>}</PageLayout>;
 }
+export default function ProductsPage(){return <ProductCatalogPage/>;}

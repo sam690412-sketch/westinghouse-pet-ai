@@ -1,3 +1,5 @@
+import { useI18n } from "@/i18n";
+import { tr } from "@/i18n/storefront";
 import {
   Snowflake, Thermometer, Camera, Shield,
   Package, BatteryCharging, CheckCircle, Droplets,
@@ -28,13 +30,15 @@ function getIcon(name: string): LucideIcon {
 }
 
 export function ProductFeaturesSection({ features }: ProductFeaturesSectionProps) {
+  const { locale } = useI18n();
+  const title = tr(locale,"產品特色","Product features","คุณสมบัติสินค้า");
   const stagger = useStaggerAnimation(features.length, { threshold: 0.1 });
 
   return (
-    <section className="bg-neutral-50 section-px section-py" aria-label="產品特色">
+    <section className="bg-neutral-50 section-px section-py" aria-label={title}>
       <div className="mx-auto max-w-6xl">
         <Heading as="h2" variant="h3" className="mb-8 text-center">
-          產品特色
+          {title}
         </Heading>
 
         <div
